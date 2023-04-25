@@ -58,17 +58,17 @@ if __name__ =='__main__':
     const_parameters = {
         "Faraday Constant [C mol-1]": 96485.3328959,
         "Gas constant [J K-1 mol-1]": 8.314459848,
-        "Far-field concentration of S(soln) [mol cm-3]": 1e-3,
+        "Far-field concentration of S(soln) [mol cm-3]": 1e-6,
         "Far-field concentration of P(soln) [mol cm-3]": 0e-6,
         "Diffusion Coefficient [cm2 s-1]": 1e-5,
-        "Electrode Area [cm2]": 0.01,
+        "Electrode Area [cm2]": 1,
         "Temperature [K]": 298,
         "Voltage frequency [rad s-1]": 9.0152,
         "Voltage start [V]": 0.5,
         "Voltage reverse [V]": -0.5,
         "Voltage amplitude [V]": 0.0,
         "Scan Rate [V s-1]": 0.05,
-        "Electrode Coverage [mol cm-2]": 1e-9,
+        "Electrode Coverage [mol cm-2]": 1e-12,
     }
     
     #BANDAID, FIXME#
