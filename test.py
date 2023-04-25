@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Apr 22 10:34:44 2023
+
+@author: Nathan
+"""
+
 ## This file defines the CatalyticModel class
 #original author: Martin...?
 
@@ -26,8 +33,8 @@ class CatalyticModel:
         R = pybamm.Parameter("Gas constant [J K-1 mol-1]")
         a = pybamm.Parameter("Electrode Area [cm2]")
         T = pybamm.Parameter("Temperature [K]")
-        CS_d = pybamm.Parameter("Far-field concentration of S(soln) [mol cm-3]")
-        CP_d = pybamm.Parameter("Far-field concentration of P(soln) [mol cm-3]")
+        CS_d = pybamm.Parameter("Far-field concentration of S(soln) [mol cm-3]") #inf
+        CP_d = pybamm.Parameter("Far-field concentration of P(soln) [mol cm-3]") #inf
         omega_d = pybamm.Parameter("Voltage frequency [rad s-1]")
         E_start_d = pybamm.Parameter("Voltage start [V]")
         E_reverse_d = pybamm.Parameter("Voltage reverse [V]")
@@ -111,9 +118,9 @@ class CatalyticModel:
         ###########################
 
         # Create state variables for model
-        c_Ox = pybamm.Variable("O(surf) [non-dim]")
-        c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
-        c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
+        c_Ox = pybamm.Variable("O(surf) [non-dim]", domain="electrode")
+        c_s = pybamm.Variable("S(soln) [non-dim]", domain="electrode")
+        c_p = pybamm.Variable("P(soln) [non-dim]", domain="electrode")
         i = pybamm.Variable("Current [non-dim]")
 
         #TODO: Why is this in i_f?
@@ -126,11 +133,12 @@ class CatalyticModel:
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
 
         # defining boundary values
-        #c_Ox_boundary = pybamm.BoundaryValue(c_Ox, "left")
+        c_Ox_boundary = pybamm.BoundaryValue(c_Ox, "left")
         c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
         c_at_electrode_p = pybamm.BoundaryValue(c_p, "left")
 
          # Faradaic current (Butler Volmer)
+        #TODO: seems right, but this doesn't have indirect contributions from S or P
         i_f = k0 * ((1 - c_Ox) * pybamm.exp((1-alpha) * (Eeff - E0)) #contribution of Red
                     - c_Ox * pybamm.exp(-alpha * (Eeff - E0)) #contribution of Ox
                     )
@@ -149,9 +157,20 @@ class CatalyticModel:
         # algebraic equations (none)
         # model.algebraic = {
         # }
+        
+        model.initial_conditions = {
+            c_Ox: pybamm.Scalar(1),
+            i: Cdl * Eapp.diff(pybamm.t), #having Cdl here is fine (if it's 0, starting i is 0)
+            c_s: (CS_d/Ctot),
+            c_p: (CP_d/Ctot),
+        }
 
         # Setting boundary and initial conditions
         model.boundary_conditions = {
+            c_Ox: {
+                "right": (pybamm.Scalar(0), "Dirichlet"), #0 - no Ox should be present at xmax
+                "left": (i_f, "Neumann"),
+            },
             #LE 29 Mar 2023: copied c_s condition for c_Ox
             c_s: {
                 "right": (pybamm.Scalar(1), "Dirichlet"),
@@ -164,12 +183,6 @@ class CatalyticModel:
             } 
         }
 
-        model.initial_conditions = {
-            c_Ox: pybamm.Scalar(1),
-            i: Cdl * Eapp.diff(pybamm.t), #having Cdl here is fine (if it's 0, starting i is 0)
-            c_s: (CS_d/Ctot),
-            c_p: (CP_d/Ctot),
-        }
 
         # set spatial variables and domain geometry
         #LE 02 Apr 23: this can only handle one domain

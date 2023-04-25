@@ -44,7 +44,7 @@ def main(const_parameters,input_parameters,times):
     plt.savefig("output/currentvstime_cat01.png")
 
     plt.cla()
-    plt.plot(times, O_nd)
+    plt.plot(times, S_nd)
     plt.xlabel("time [non-dim]")
     plt.ylabel("Concentration Ox [non-dim]")
     plt.savefig("output/Oconcvstime_cat01.png")
@@ -64,8 +64,8 @@ if __name__ =='__main__':
         "Electrode Area [cm2]": 0.01,
         "Temperature [K]": 298,
         "Voltage frequency [rad s-1]": 9.0152,
-        "Voltage start [V]": 0.4,
-        "Voltage reverse [V]": -0.4,
+        "Voltage start [V]": 0.5,
+        "Voltage reverse [V]": -0.5,
         "Voltage amplitude [V]": 0.0,
         "Scan Rate [V s-1]": 0.05,
         "Electrode Coverage [mol cm-2]": 1e-9,
@@ -73,7 +73,7 @@ if __name__ =='__main__':
     
     #BANDAID, FIXME#
     # calculate time scale to pass into model
-    Tmax = abs(0.4 + 0.4)/0.05 * 2
+    Tmax = abs(0.5 + 0.5)/0.05 * 2
     Tdim = np.linspace(0, Tmax, 2**12)
     TnonDim = (96485.3328959 * 0.05 / (8.314459848*298)) * Tdim
 
@@ -81,8 +81,8 @@ if __name__ =='__main__':
     input_parameters = {
         "Reversible Potential [V]": 0.0,
         "Redox Rate [s-1]": 10000,
-        "Catalytic Rate For [cm3 mol-l s-1]": 1e3,
-        "Catalytic Rate Back [cm3 mol-l s-1]": 1e-10,
+        "Catalytic Rate For [cm3 mol-l s-1]": 10,
+        "Catalytic Rate Back [cm3 mol-l s-1]": 0.2,
         "Symmetry factor [non-dim]": 0.5,
         #28 Mar 2023: not fully implemented
         "Capacitance [F]": 1e-8,
@@ -97,4 +97,4 @@ if __name__ =='__main__':
 
     #TODO: add multiple fxns for running models at the same time
     #TODO: improve plotting for pybamm based models: investigate using pybamm's plotting features??
-    #TODO: LOW PRIORITY make compatible with interactive plotters
+    #TODO: LOW PRIORITY make compatible with interactive plottersz
