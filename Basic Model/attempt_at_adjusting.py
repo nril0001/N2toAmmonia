@@ -22,7 +22,7 @@ class SingleReactionSolution(pints.ForwardModel):
         E_reverse_d = pybamm.Parameter("Voltage reverse [V]")
         deltaE_d = pybamm.Parameter("Voltage amplitude [V]")
         v = pybamm.Parameter("Scan Rate [V s-1]")
-        omega_d = pybamm.InputParameter("Voltage frequency [rad s-1]")
+        omega_d = pybamm.Parameter("Voltage frequency [rad s-1]")
 
         # Create dimensional input parameters
         E0_d = pybamm.InputParameter("Reversible Potential [V]")

@@ -22,7 +22,7 @@ def main(const_parameters,times):
             "Symmetry factor [non-dim]": 0.5,
             #28 Mar 2023: not fully implemented
             "Capacitance [F]": 1e-8,
-            "Uncompensated Resistance [Ohm]": 1.0
+            "Uncompensated Resistance [Ohm]": 1.0,
         }
         print(i)
         
@@ -82,7 +82,7 @@ if __name__ =='__main__':
     
     #BANDAID, FIXME#
     # calculate time scale to pass into model
-    n = 2000
+    n = 200
     t_eval = np.linspace(0, 50, n)
     
     Tmax = abs(0.5 + 0.5)/0.05 * 2
