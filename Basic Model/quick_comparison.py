@@ -82,7 +82,7 @@ if __name__ =='__main__':
     
     #BANDAID, FIXME#
     # calculate time scale to pass into model
-    n = 50
+    n = 2000
     t_eval = np.linspace(0, 50, n)
     
     Tmax = abs(0.5 + 0.5)/0.05 * 2

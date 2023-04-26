@@ -143,6 +143,7 @@ class SingleReactionSolution(pints.ForwardModel):
         # model variables
         model.variables = {
             "Current [non-dim]": i,
+            "Applied Voltage [non-dim]": Eapp,
         }
 
         #--------------------------------
@@ -158,14 +159,17 @@ class SingleReactionSolution(pints.ForwardModel):
         disc.process_model(model)
 
         # Create solver
-        solver = pybamm.CasadiSolver(mode="fast",
-                                     rtol=1e-9,
-                                     atol=1e-9,
-                                     extra_options_setup={'print_stats': False})
+        #solver = pybamm.CasadiSolver(mode="fast",
+        #                             rtol=1e-9,
+        #                             atol=1e-9,
+        #                             extra_options_setup={'print_stats': False})
         #model.convert_to_format = 'jax'
         #solver = pybamm.JaxSolver(method='BDF')
         #model.convert_to_format = 'python'
         #solver = pybamm.ScipySolver(method='BDF')
+        
+        model.convert_to_format = 'python'
+        solver = pybamm.ScipySolver(method='Radau', rtol=1e-6, atol=1e-6)
 
         # Store discretised model and solver
         self._model = model
@@ -218,7 +222,11 @@ class SingleReactionSolution(pints.ForwardModel):
 
         try:
             solution = self._solver.solve(self._model, times, inputs=input_parameters)
-            return solution.y[index:index+1, :].reshape(-1)
+            return (
+                solution["Current [non-dim]"](times),
+                solution["Applied Voltage [non-dim]"](times),
+                #parameters
+            )
         except pybamm.SolverError:
             print('solver errored for params',parameters)
             return np.zeros_like(times)
@@ -238,12 +246,10 @@ if __name__ == '__main__':
     t_eval = np.linspace(0, 50, n)
 
     t0 = time.perf_counter()
-    y1 = model.simulate(x, t_eval)
+    current, voltage = model.simulate(x, t_eval)
     t1 = time.perf_counter()
-    y2 = model.simulate(x, t_eval)
-    t2 = time.perf_counter()
-    print('times', t1-t0, t2-t1)
-    plt.plot(t_eval, y2*model._I_0)
+    print('times', t1-t0)
+    plt.plot(voltage*model._E_0, current*model._I_0)
     plt.ylabel("current [A]")
     plt.xlabel("time [non-dim]")
     plt.show()
