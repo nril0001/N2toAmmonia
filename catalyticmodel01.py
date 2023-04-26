@@ -28,12 +28,12 @@ class CatalyticModel:
         T = pybamm.Parameter("Temperature [K]")
         CS_d = pybamm.Parameter("Far-field concentration of S(soln) [mol cm-3]")
         CP_d = pybamm.Parameter("Far-field concentration of P(soln) [mol cm-3]")
-        omega_d = pybamm.Parameter("Voltage frequency [rad s-1]")
+        
         E_start_d = pybamm.Parameter("Voltage start [V]")
         E_reverse_d = pybamm.Parameter("Voltage reverse [V]")
-        deltaE_d = pybamm.Parameter("Voltage amplitude [V]")
         v = pybamm.Parameter("Scan Rate [V s-1]")
         Gamma = pybamm.Parameter("Electrode Coverage [mol cm-2]")
+        #omega_d = pybamm.Parameter("Voltage frequency [rad s-1]")
 
         # Create dimensional input parameters
         E0_d = pybamm.InputParameter("Reversible Potential [V]")
@@ -46,12 +46,13 @@ class CatalyticModel:
 
         
         # Create scaling factors for non-dimensionalisation
-        E_0 = R * T / F #units are V
+        E_0 = (R * T)/ F #units are V
         T_0 = E_0 / v #units are seconds; this is RT/Fv
-        I_0 = F * a * Gamma / T_0   #units are A; this is (F^2)aGammav / RT
         Ctot = CS_d + CP_d #units are mol cm-3
         L_0 = pybamm.sqrt(D * T_0) #units are cm
-        #TODO:What is L_0 is meant to be a scalar for?
+        
+        #get diffusion in here
+        I_0 = (F * a * Gamma / T_0)  #units are A; this is (F^2) a Gammav / RT
 
         # Non-dimensionalise parameters
         E0 = E0_d / E_0 #no units
@@ -65,7 +66,7 @@ class CatalyticModel:
         # sigma = v * a / (E_0 * D) #no units
         # t_reverse = (E_start - E_reverse) / sigma #no units
 
-        k0 = k0_d * T_0 #no units: D isn't in this because it's already on the surface
+        k0 = k0_d * a #no units: D isn't in this because it's already on the surface
         kcat_for = kcat_forward_d * T_0 * Ctot #no units
         kcat_back = kcat_backward_d * T_0 * Ctot #no units
         
@@ -111,7 +112,7 @@ class CatalyticModel:
         ###########################
 
         # Create state variables for model
-        c_Ox = pybamm.Variable("O(surf) [non-dim]")
+        c_Ox = pybamm.Variable("O(surf) [non-dim]", domain="solution")
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
         i = pybamm.Variable("Current [non-dim]")
@@ -125,15 +126,16 @@ class CatalyticModel:
         #"left" indicates environment directly on electrode surface; x = 0
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
 
+        # Faradaic current (Butler Volmer)
+        i_f = k0 * ((1 - c_Ox) * pybamm.exp((1-alpha) * (Eeff - E0)) #contribution of Red
+                    - c_Ox * pybamm.exp(-alpha * (Eeff - E0)) #contribution of Ox
+                    )         
+
         # defining boundary values
         #c_Ox_boundary = pybamm.BoundaryValue(c_Ox, "left")
         c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
         c_at_electrode_p = pybamm.BoundaryValue(c_p, "left")
 
-         # Faradaic current (Butler Volmer)
-        i_f = k0 * ((1 - c_Ox) * pybamm.exp((1-alpha) * (Eeff - E0)) #contribution of Red
-                    - c_Ox * pybamm.exp(-alpha * (Eeff - E0)) #contribution of Ox
-                    )
         
         #catalytic rate contribution (this was previoulsly written as catalytic current)
         cat_con = kcat_for * c_at_electrode_s * (1-c_Ox) - kcat_back * c_at_electrode_p * (c_Ox)
@@ -141,7 +143,8 @@ class CatalyticModel:
         # PDEs - left hand side is assumed to be time derivative of the PDE
         model.rhs = {
             c_Ox: i_f + cat_con, #i_f is the echem contribution, cat_con is chemical contribution
-            i: (i_f - cat_con - i)/(Cdl * Ru), # current divided by non-dim "s" obtained from Cdl and Ru term
+            i: (i_f + Cdl * Eapp.diff(pybamm.t) - i)/T_0, # current divided by non-dim "s" obtained from Cdl and Ru term
+            #i: (i_f - cat_con - i)/T_0, # current divided by non-dim "s" obtained from Cdl and Ru term
             c_s: pybamm.div(pybamm.grad(c_s)), #TODO: understand this
             c_p: pybamm.div(pybamm.grad(c_p))
         }
