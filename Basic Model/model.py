@@ -2,6 +2,7 @@ import pybamm
 import numpy as np
 import matplotlib.pylab as plt
 import pints
+import time
 
 
 class SingleReactionSolution(pints.ForwardModel):
@@ -32,7 +33,7 @@ class SingleReactionSolution(pints.ForwardModel):
 
         E_start_d = pybamm.Parameter("Voltage start [V]")
         E_reverse_d = pybamm.Parameter("Voltage reverse [V]")
-        deltaE_d = pybamm.Parameter("Voltage amplitude [V]")
+        #deltaE_d = pybamm.Parameter("Voltage amplitude [V]")
         v = pybamm.Parameter("Scan Rate [V s-1]")
 
         # Create dimensional input parameters
@@ -41,7 +42,7 @@ class SingleReactionSolution(pints.ForwardModel):
         alpha = pybamm.InputParameter("Symmetry factor [non-dim]")
         Cdl = pybamm.InputParameter("Capacitance [non-dim]")
         Ru = pybamm.InputParameter("Uncompensated Resistance [non-dim]")
-        omega_d = pybamm.InputParameter("Voltage frequency [rad s-1]")
+        #omega_d = pybamm.InputParameter("Voltage frequency [rad s-1]")
 
 
         E0_d = pybamm.InputParameter("Reversible Potential [V]")
@@ -61,20 +62,20 @@ class SingleReactionSolution(pints.ForwardModel):
         k0 = k0_d * L_0 / D
         Cdl = Cdl_d * S * E_0 / (I_0 * T_0)
         Ru = Ru_d * I_0 / E_0
-        omega = 2 * np.pi * omega_d * T_0
+        #omega = 2 * np.pi * omega_d * T_0
 
         E_start = E_start_d / E_0
         E_reverse = E_reverse_d / E_0
         t_reverse = E_start - E_reverse
-        deltaE = deltaE_d / E_0
+        #deltaE = deltaE_d / E_0
 
         # Input voltage protocol
         Edc_forward = -pybamm.t
         Edc_backwards = pybamm.t - 2*t_reverse
         Eapp = E_start + \
             (pybamm.t <= t_reverse) * Edc_forward + \
-            (pybamm.t > t_reverse) * Edc_backwards + \
-            deltaE * pybamm.sin(omega * pybamm.t)
+            (pybamm.t > t_reverse) * Edc_backwards 
+            #deltaE * pybamm.sin(omega * pybamm.t)
 
         # create PyBaMM model object
         model = pybamm.BaseModel()
@@ -92,7 +93,7 @@ class SingleReactionSolution(pints.ForwardModel):
         # ODE equations
         model.rhs = {
             theta: pybamm.div(pybamm.grad(theta)),
-            i: 1/(Cdl * Ru) * (-i_f + Cdl * Eapp.diff(pybamm.t) - i),
+            i: 1/(Cdl * Ru) * (i_f + Cdl * Eapp.diff(pybamm.t) - i),
         }
 
         # algebraic equations (none)
@@ -116,7 +117,7 @@ class SingleReactionSolution(pints.ForwardModel):
 
         model.initial_conditions = {
             theta: pybamm.Scalar(1),
-            i: Cdl * (-1.0 + deltaE * omega),
+            i: Cdl * (1.0),
         }
 
         # set spatial variables and solution domain geometry
@@ -227,45 +228,22 @@ class SingleReactionSolution(pints.ForwardModel):
 
 
 if __name__ == '__main__':
-    #FOR DIGIELCHM comparison
-    files = [['digielchcomp/current k0 1e-3.txt',1], ['digielchcomp/current k0 2e-3.txt', 2],
-             ['digielchcomp/current k0 5e-3.txt', 5], ['digielchcomp/current k0_0.1.txt', 100],
-             ['digielchcomp/current k0_0.5.txt', 500], ['digielchcomp/current k0_1.txt', 1000],
-             ['digielchcomp/current k0_1e-2.txt', 10], ['digielchcomp/current k0_10.txt', 10000],
-             ['digielchcomp/current k0_100.txt', 100000], ['digielchcomp/current k0_1000.txt', 1000000]]
-    for i in files:
-        
-        #conditions that will change often over the course of testing
-        print(i)
-        
-        voltage = []
-        curr = []
-        row = []
-         
-        f = open(i[0],'r')
-        for row in f:
-            row = row.split("\t")
-            voltage.append(float(row[0]))
-            curr.append(float(row[1]))
-        
-        # pybamm.set_logging_level('INFO')
-        model = SingleReactionSolution()
 
-        x = np.array([i[1], 0.5, 0.5, 1e-8, 20.0e-6, 9.0152])
+    # pybamm.set_logging_level('INFO')
+    model = SingleReactionSolution()
 
-        n = 2000
-        t_eval = np.linspace(0, 50, n)
+    x = np.array([1, 0.214, 0.53, 8.0, 20.0e-6, 9.0152, 0.01])
 
-        y2 = model.simulate(x, t_eval)
-        plt.plot(t_eval, y2)
-        plt.ylabel("current [non-dim]")
-        plt.xlabel("time [non-dim]")
-        plt.show()
-                
-    
-    
-    
-    
-    
+    n = 2000
+    t_eval = np.linspace(0, 50, n)
 
-    
+    t0 = time.perf_counter()
+    y1 = model.simulate(x, t_eval)
+    t1 = time.perf_counter()
+    y2 = model.simulate(x, t_eval)
+    t2 = time.perf_counter()
+    print('times', t1-t0, t2-t1)
+    plt.plot(t_eval, y2*model._I_0)
+    plt.ylabel("current [A]")
+    plt.xlabel("time [non-dim]")
+    plt.show()

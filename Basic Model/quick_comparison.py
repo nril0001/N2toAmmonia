@@ -49,7 +49,7 @@ def main(const_parameters,times):
           
         
         plt.cla()
-        plt.plot(voltage, curr, color = 'g', label = 'Digielch')
+        #plt.plot(voltage, curr, color = 'g', label = 'Digielch')
         plt.plot(E_d, I_d, color = 'b', label = 'Pybamm')
         plt.title(title)
         plt.legend()
