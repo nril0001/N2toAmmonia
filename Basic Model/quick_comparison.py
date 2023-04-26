@@ -82,14 +82,14 @@ if __name__ =='__main__':
     
     #BANDAID, FIXME#
     # calculate time scale to pass into model
-    n = 200
+    n = 50
     t_eval = np.linspace(0, 50, n)
     
     Tmax = abs(0.5 + 0.5)/0.05 * 2
     Tdim = np.linspace(0, Tmax, 2**12)
     TnonDim = (96485.3328959 * 0.05 / (8.314459848*298)) * Tdim
 
-    main(const_parameters,TnonDim)
+    main(const_parameters,t_eval)
     
 
     #literally just to test that that main is working properly (delete later)
