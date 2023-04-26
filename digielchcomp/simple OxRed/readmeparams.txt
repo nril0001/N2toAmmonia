@@ -1,17 +1,14 @@
 Relevant parameters for the DigiElch Simulations:
 
+Ox + e- = Red
 
 Symmetry factor (alpha) = 0.5
-
 Ox initial concentration = 0.1 mol/L
-Gamma = 1e-12 mol/cm2
-S initial concentration = 0.001 mol/L
+Red initial concentration = 0.0 mol/L
 
-k0 = 1e6
-kf = varies, see filename. in L/mol/s
-kb = varies, see filename. in L/mol/s
+k0 = varies, see filename. in L/mol/s
 
-Diffusion coefficient of S and P = 1e-5 cm2/s
+Diffusion coefficient of Ox and Red = 1e-5 cm2/s
 
 E0 = 0 V
 Estart = 0.5 V
@@ -24,10 +21,6 @@ Electrode area = 1 cm2
 Ru = 0 Ohm
 Cdl = 0 F
 Temperature = 298.2
-
-Adsorption constants (have physical limit)
-K* = 1e30
-kf* = 1e15
 
 MODEL PARAMETERS
 Noise level = 0 %
