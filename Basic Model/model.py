@@ -10,17 +10,18 @@ class SingleReactionSolution(pints.ForwardModel):
         # Set fixed parameters here
         if param is None:
             param = pybamm.ParameterValues({
-                "Far-field concentration of A [mol cm-3]": 1e-6,
-                "Diffusion Constant [cm2 s-1]": 7.2e-6,
                 "Faraday Constant [C mol-1]": 96485.3328959,
                 "Gas constant [J K-1 mol-1]": 8.314459848,
-                "Electrode Area [cm2]": 0.07,
-                "Temperature [K]": 297.0,
+                "Far-field concentration of A [mol cm-3]": 2e-6,
+                "Diffusion Constant [cm2 s-1]": 1e-5,
+                "Electrode Area [cm2]": 1,
+                "Temperature [K]": 298.2,
                 "Voltage frequency [rad s-1]": 9.0152,
                 "Voltage start [V]": 0.5,
-                "Voltage reverse [V]": -0.1,
-                "Voltage amplitude [V]": 0.08,
-                "Scan Rate [V s-1]": 0.08941,
+                "Voltage reverse [V]": -0.5,
+                "Voltage amplitude [V]": 0.0,
+                "Scan Rate [V s-1]": 0.05,
+                "Electrode Coverage [mol cm-2]": 1e-12,
             })
 
         # Create dimensional fixed parameters
@@ -59,7 +60,7 @@ class SingleReactionSolution(pints.ForwardModel):
 
         # Non-dimensionalise parameters
         E0 = E0_d / E_0
-        k0 = k0_d * L_0 / D
+        k0 = (k0_d * pybamm.sqrt(S))/D
         Cdl = Cdl_d * S * E_0 / (I_0 * T_0)
         Ru = Ru_d * I_0 / E_0
         #omega = 2 * np.pi * omega_d * T_0
@@ -93,7 +94,7 @@ class SingleReactionSolution(pints.ForwardModel):
         # ODE equations
         model.rhs = {
             theta: pybamm.div(pybamm.grad(theta)),
-            i: 1/(Cdl * Ru) * (i_f + Cdl * Eapp.diff(pybamm.t) - i),
+            i: (i_f + Cdl * Eapp.diff(pybamm.t) - i), # 1/(Cdl * Ru) *
         }
 
         # algebraic equations (none)
@@ -102,10 +103,8 @@ class SingleReactionSolution(pints.ForwardModel):
 
         # Butler-volmer boundary condition at electrode
         theta_at_electrode = pybamm.BoundaryValue(theta, "left")
-        butler_volmer = k0 * (
-            theta_at_electrode * pybamm.exp(-alpha * (Eeff - E0))
-            - (1 - theta_at_electrode) * pybamm.exp((1-alpha) * (Eeff - E0))
-        )
+        butler_volmer = k0 * pybamm.exp(-alpha * (Eeff - E0)) * (theta_at_electrode 
+                        - ((1 - theta_at_electrode)*pybamm.exp(Eeff - E0)))
 
         # Boundary and initial conditions
         model.boundary_conditions = {
@@ -236,20 +235,64 @@ class SingleReactionSolution(pints.ForwardModel):
 
 
 if __name__ == '__main__':
+    
 
-    # pybamm.set_logging_level('INFO')
-    model = SingleReactionSolution()
+    #FOR DIGIELCHM comparison
+# =============================================================================
+#     files = [['digielchcomp/current k0 1e-3.txt',24234345325654264564.0], ['digielchcomp/current k0 2e-3.txt', 2],
+#               ['digielchcomp/current k0 5e-3.txt', 5], ['digielchcomp/current k0_0.1.txt', 100],
+#               ['digielchcomp/current k0_0.5.txt', 500], ['digielchcomp/current k0_1.txt', 1000],
+#               ['digielchcomp/current k0_1e-2.txt', 10], ['digielchcomp/current k0_10.txt', 10000],
+#               ['digielchcomp/current k0_100.txt', 100000], ['digielchcomp/current k0_1000.txt', 1000000]]
+#     for i in files:
+# =============================================================================
+        
+# =============================================================================
+#         print(i)
+#         
+#         volt = []
+#         curr = []
+#         row = []
+#           
+#         f = open(i[0],'r')
+#         for row in f:
+#             row = row.split("\t")
+#             volt.append(float(row[0]))
+#             curr.append(float(row[1]))
+# =============================================================================
+            
+            
+        # pybamm.set_logging_level('INFO')
+        model = SingleReactionSolution()
+        
+        React_Rate = 1
+        Revers_Potent = 0
+        Symm_fact = 0.5
+        Uncomp_resist = 1.0
+        Capacit = 1e-8
+        Volt_freq = 0
+        x = np.array([React_Rate, Revers_Potent, Symm_fact, Uncomp_resist, Capacit, Volt_freq])
+        
+        Tmax = abs(0.5 + 0.5)/0.05 * 2
+        Tdim = np.linspace(0, Tmax, 2**8)
+        TnonDim = (96485.3328959 * 0.05 / (8.314459848*298)) * Tdim
 
-    x = np.array([1, 0.214, 0.53, 8.0, 20.0e-6, 9.0152, 0.01])
-
-    n = 2000
-    t_eval = np.linspace(0, 50, n)
-
-    t0 = time.perf_counter()
-    current, voltage = model.simulate(x, t_eval)
-    t1 = time.perf_counter()
-    print('times', t1-t0)
-    plt.plot(voltage*model._E_0, current*model._I_0)
-    plt.ylabel("current [A]")
-    plt.xlabel("time [non-dim]")
-    plt.show()
+        t0 = time.perf_counter()
+        current, voltage = model.simulate(x, TnonDim)
+        t1 = time.perf_counter()
+                
+        ##redimensionalizing here for now. Messy to do in main, move later
+        I_d = current*model._I_0*1e2
+        E_d = voltage * model._E_0
+        #title = i[0]
+          
+        
+        plt.cla()
+        #plt.plot(volt, curr, color = 'g', label = 'Digielch')
+        plt.plot(E_d, I_d, color = 'b', label = 'Pybamm')
+        #plt.title(title)
+        plt.legend()
+        plt.xlabel("Eapp [V]")
+        plt.ylabel("current [A]")
+        plt.show()
+        #plt.savefig(i[0]+".png")
