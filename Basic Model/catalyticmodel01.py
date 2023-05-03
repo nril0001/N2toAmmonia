@@ -56,15 +56,10 @@ class CatalyticModel:
 
         # Non-dimensionalise parameters
         E0 = E0_d / E_0 #no units
-    #old way of defining Es
         E_start = E_start_d / E_0
         E_reverse = E_reverse_d / E_0
         t_reverse = E_start - E_reverse
-    #rewritten ways (with sigma)
-        # E_start =  (E_start_d / E_0) - E0 #no units
-        # E_reverse = (E_reverse_d / E_0) - E0 #no units
-        # sigma = v * a / (E_0 * D) #no units
-        # t_reverse = (E_start - E_reverse) / sigma #no units
+
 
         k0 = k0_d * a #no units: D isn't in this because it's already on the surface
         kcat_for = kcat_forward_d * T_0 * Ctot #no units
@@ -72,7 +67,6 @@ class CatalyticModel:
         
         Cdl = Cdl_d * E_0 / (I_0 * T_0) #21 Mar 21 - removed area, no units now
         Ru = Ru_d * I_0 / E_0 #no units
-
 
         #irrelevant for now
         # omega = 2 * np.pi * omega_d * T_0 #AC related
@@ -88,14 +82,7 @@ class CatalyticModel:
             (pybamm.t > t_reverse) * Edc_backwards
             #deltaE * pybamm.sin(omega * pybamm.t)
 
-        
-    #2 Apr 23: Eapp rewritten to contain scanrate and nondim time
-        # t_nd = pybamm.t / T_0
-        # Edc_forward = E_start - (sigma * t_nd)
-        # Edc_backwards = E_reverse + sigma * (t_nd - t_reverse)
-        # Eapp = (t_nd <= t_reverse) * Edc_forward + \
-        #     (t_nd > t_reverse) * Edc_backwards + \
-        #     deltaE * pybamm.sin(omega * t_nd)                        
+                               
 
         # create PyBaMM model object
         model = pybamm.BaseBatteryModel(options=seioptions)
@@ -112,7 +99,8 @@ class CatalyticModel:
         ###########################
 
         # Create state variables for model
-        c_Ox = pybamm.Variable("O(surf) [non-dim]", domain="solution")
+        c_Ox = pybamm.Variable("O(surf) [non-dim]")
+        c_Red = pybamm.Variable("O(surf) [non-dim]")
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
         i = pybamm.Variable("Current [non-dim]")
@@ -120,14 +108,13 @@ class CatalyticModel:
         #TODO: Why is this in i_f?
         # Effective potential
         Eeff = Eapp - i * Ru #no units
-
        
         #FIXME: check the boundary value for c_Ox is correct
         #"left" indicates environment directly on electrode surface; x = 0
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
 
-        # Faradaic current (Butler Volmer)
-        i_f = k0 * ((1 - c_Ox) * pybamm.exp((1-alpha) * (Eeff - E0)) #contribution of Red
+        # Faradaic current (Butler Volmer) - how much is the backwards rate occurring
+        i_f = k0 * ((c_Red) * pybamm.exp((1-alpha) * (Eeff - E0)) #contribution of Red
                     - c_Ox * pybamm.exp(-alpha * (Eeff - E0)) #contribution of Ox
                     )         
 
@@ -138,15 +125,16 @@ class CatalyticModel:
 
         
         #catalytic rate contribution (this was previoulsly written as catalytic current)
-        cat_con = kcat_for * c_at_electrode_s * (1-c_Ox) - kcat_back * c_at_electrode_p * (c_Ox)
+        cat_con = kcat_for * c_at_electrode_s * (c_Red) - kcat_back * c_at_electrode_p * (c_Ox)
 
         # PDEs - left hand side is assumed to be time derivative of the PDE
         model.rhs = {
-            c_Ox: i_f + cat_con, #i_f is the echem contribution, cat_con is chemical contribution
+            c_Ox: cat_con + i_f, #i_f is the echem contribution, cat_con is chemical contribution
+            c_Red: -c_Ox,
             i: (i_f + Cdl * Eapp.diff(pybamm.t) - i)/T_0, # current divided by non-dim "s" obtained from Cdl and Ru term
             #i: (i_f - cat_con - i)/T_0, # current divided by non-dim "s" obtained from Cdl and Ru term
-            c_s: pybamm.div(pybamm.grad(c_s)), #TODO: understand this
-            c_p: pybamm.div(pybamm.grad(c_p))
+            c_s: D*pybamm.div(pybamm.grad(c_s)) - cat_con, 
+            c_p: D*pybamm.div(pybamm.grad(c_p)) + cat_con
         }
 
         # algebraic equations (none)
@@ -157,18 +145,19 @@ class CatalyticModel:
         model.boundary_conditions = {
             #LE 29 Mar 2023: copied c_s condition for c_Ox
             c_s: {
-                "right": (pybamm.Scalar(1), "Dirichlet"),
+                "right": (pybamm.Scalar(CS_d/Ctot), "Dirichlet"),
                 "left": (cat_con, "Neumann"),                    
             },
 
             c_p: {
-                "right": (pybamm.Scalar(0), "Dirichlet"),   #0 makes sense - we'll always be starting with no product
+                "right": (pybamm.Scalar(CP_d/Ctot), "Dirichlet"),   #0 makes sense - we'll always be starting with no product
                 "left": (-cat_con, "Neumann"),                 
             } 
         }
 
         model.initial_conditions = {
             c_Ox: pybamm.Scalar(1),
+            c_Red: pybamm.Scalar(0),
             i: Cdl * Eapp.diff(pybamm.t), #having Cdl here is fine (if it's 0, starting i is 0)
             c_s: (CS_d/Ctot),
             c_p: (CP_d/Ctot),
