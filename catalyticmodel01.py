@@ -245,6 +245,7 @@ class CatalyticModel:
             solution["Current [non-dim]"](times_nd),
             solution["Applied Voltage [non-dim]"](times_nd),
             solution["O(surf) [non-dim]"](times_nd),
+            solution["R(surf) [non-dim]"](times_nd),
             solution["S(soln) at electrode [non-dim]"](times_nd),
             solution["P(soln) at electrode [non-dim]"](times_nd),
             times_nd

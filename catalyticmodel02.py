@@ -1,6 +1,4 @@
-## This file defines the CatalyticModel class
-#original author: Martin...?
-#Model that has two normalizations, one wrt S
+## CatalyticModel that has two normalizations, one wrt S and the other wrt to Gamma
 
 import pybamm
 import numpy as np
@@ -10,9 +8,6 @@ class CatalyticModel:
 
         #Const_parameters are the parameters to be passed into this model via main.py
         param = pybamm.ParameterValues(const_parameters)
-
-        #LE 31 Mar 23: idk if this is useful now
-        #self.Npara = Npara
 
         #Options relating to the models, like SEI
         self.options= self.calloptions()
@@ -45,7 +40,7 @@ class CatalyticModel:
 
         # Create scaling factors for non-dimensionalisation
         E_0 = (R * T)/ F #units are V
-        T_0 = DS_d / a #units are seconds; CHANGED TO BE D/A
+        T_0 = E_0 / v #units are seconds
         Ctot = CS_d + CP_d #units are mol cm-3
         
         #get diffusion in here
@@ -115,8 +110,8 @@ class CatalyticModel:
             sc_Ox: i_f + cat_con, #i_f is the echem contribution, cat_con is chemical contribution
             sc_Red: -i_f - cat_con,
             i: i_f - i, # capacitive current + Cdl * Eapp.diff(pybamm.t) 
-            c_s: pybamm.div(pybamm.grad(c_s)),
-            c_p: pybamm.div(pybamm.grad(c_p)),
+            c_s: d_S * pybamm.div(pybamm.grad(c_s)),
+            c_p: d_P * pybamm.div(pybamm.grad(c_p)),
         }
 
         # Setting boundary and initial conditions
@@ -172,6 +167,7 @@ class CatalyticModel:
             "Current [non-dim]": i,
             "Applied Voltage [non-dim]": Eapp,
             "O(surf) [non-dim]": sc_Ox,
+            "R(surf) [non-dim]": sc_Red,
             "S(soln) at electrode [non-dim]": c_at_electrode_s,
             "P(soln) at electrode [non-dim]": c_at_electrode_p,
         }
@@ -226,6 +222,7 @@ class CatalyticModel:
             solution["Current [non-dim]"](times_nd),
             solution["Applied Voltage [non-dim]"](times_nd),
             solution["O(surf) [non-dim]"](times_nd),
+            solution["R(surf) [non-dim]"](times_nd),
             solution["S(soln) at electrode [non-dim]"](times_nd),
             solution["P(soln) at electrode [non-dim]"](times_nd),
             times_nd

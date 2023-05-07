@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel01 as cm1
+import catalyticmodel02 as cm2
 import numpy as np
 import time
 import matplotlib.pylab as plt
@@ -9,9 +9,9 @@ def main(const_parameters,input_parameters):
     #list of options to pass into the model
     seioptions = ()
     #setting main model to reference CatalyticModel class
-    cmodel = cm1.CatalyticModel(const_parameters,seioptions)
+    cmodel = cm2.CatalyticModel(const_parameters,seioptions)
     #setting solved answers to ones usable here
-    current, E_nd, O_nd, S_nd, P_nd, T_nd = cmodel.simulate(input_parameters)
+    current, E_nd, O_nd, R_nd, S_nd, P_nd, T_nd = cmodel.simulate(input_parameters)
     ##redimensionalizing here for now. Messy to do in main, move later
     I_d = current * cmodel._I_0
     E_d = E_nd * cmodel._E_0
@@ -43,11 +43,13 @@ def main(const_parameters,input_parameters):
     # plt.ylabel("current [non-dim]")
     # plt.savefig("output/currentvstime_cat01.png")
 
-    # plt.cla()
-    # plt.plot(times, S_nd)
-    # plt.xlabel("time [non-dim]")
-    # plt.ylabel("Concentration Ox [non-dim]")
-    # plt.savefig("output/Oconcvstime_cat01.png")
+    plt.cla()
+    plt.plot(T_nd, O_nd, label="Ox")
+    plt.plot(T_nd, R_nd, label="Red")
+    plt.xlabel("time [non-dim]")
+    plt.ylabel("Surface Concentration [non-dim]")
+    plt.legend()
+    plt.savefig("output/surfconcvstime_cat01.png")
     return
 
 if __name__ =='__main__':
