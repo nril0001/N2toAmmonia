@@ -101,7 +101,7 @@ class CatalyticModel:
 
         # Create state variables for model
         c_Ox = pybamm.Variable("O(surf) [non-dim]")
-        c_Red = pybamm.Variable("O(surf) [non-dim]")
+        c_Red = pybamm.Variable("R(surf) [non-dim]")
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
         i = pybamm.Variable("Current [non-dim]")
@@ -109,7 +109,6 @@ class CatalyticModel:
         # Effective potential
         Eeff = Eapp - i * Ru #no units
        
-        #FIXME: check the boundary value for c_Ox is correct
         #"left" indicates environment directly on electrode surface; x = 0
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
 
@@ -128,24 +127,23 @@ class CatalyticModel:
 
         # PDEs - left hand side is assumed to be time derivative of the PDE
         model.rhs = {
-            c_Ox: cat_con + i_f, #i_f is the echem contribution, cat_con is chemical contribution
-            c_Red: -c_Ox,
+            c_Ox: i_f + cat_con, #i_f is the echem contribution, cat_con is chemical contribution
+            c_Red: -i_f - cat_con, #opposite of dc_Ox/dt
             i: (i_f + Cdl * Eapp.diff(pybamm.t) - i)/T_0, # current divided by non-dim "s" obtained from Cdl and Ru term
-            #i: (i_f - cat_con - i)/T_0, # current divided by non-dim "s" obtained from Cdl and Ru term
-            c_s: D*pybamm.div(pybamm.grad(c_s)) - cat_con, 
-            c_p: D*pybamm.div(pybamm.grad(c_p)) + cat_con
+            c_s: D*pybamm.div(pybamm.grad(c_s)), #- cat_con, 
+            c_p: D*pybamm.div(pybamm.grad(c_p)) #+ cat_con
         }
 
         # Setting boundary and initial conditions
         model.boundary_conditions = {
             #LE 29 Mar 2023: copied c_s condition for c_Ox
             c_s: {
-                "right": (pybamm.Scalar(CS_d/Ctot), "Dirichlet"),
+                "right": ((CS_d/Ctot), "Dirichlet"),
                 "left": (cat_con, "Neumann"),                    
             },
 
             c_p: {
-                "right": (pybamm.Scalar(CP_d/Ctot), "Dirichlet"),   #0 makes sense - we'll always be starting with no product
+                "right": ((CP_d/Ctot), "Dirichlet"),   #0 makes sense - we'll always be starting with no product
                 "left": (-cat_con, "Neumann"),                 
             } 
         }
@@ -165,7 +163,7 @@ class CatalyticModel:
             "solution": {
                     x: {
                         "min": pybamm.Scalar(0),
-                        "max": pybamm.Scalar(10)  #Add this in eventually: 6*sqrt(DTmax)
+                        "max": 6*pybamm.sqrt(Tmax_nd)
                     }
             }
         })
@@ -227,6 +225,8 @@ class CatalyticModel:
 
         # store time scale related things
         self._Tmax_d = param.process_symbol(Tmax_d).evaluate()
+
+        print("Catalytic Model 01 initialized successfully.")
 
     #Actual simulation function
     def simulate(self, parameters):

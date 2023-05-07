@@ -208,7 +208,7 @@ class CatalyticModel:
         # store time scale related things
         self._Tmax_d = param.process_symbol(Tmax_d).evaluate()
         
-        print("CModel 2 initialized.")
+        print("Catalytic Model 02 initialized successfully.")
 
     def simulate(self, parameters):
         #####DEBUGGING#####
