@@ -19,9 +19,8 @@ class CatalyticModel:
         self.options= self.calloptions()
 
         # Create dimensional fixed parameters
-        ##LE 20 Mar 23: D is now referenced in sigma (non dim scan rate)
         # the "_d" indicates the dimensional form, while the lack of one means it's nondimensional
-        D = pybamm.Parameter("Diffusion Coefficient [cm2 s-1]")
+        D = pybamm.Parameter("Diffusion Coefficient of S [cm2 s-1]")
         F = pybamm.Parameter("Faraday Constant [C mol-1]")
         R = pybamm.Parameter("Gas constant [J K-1 mol-1]")
         a = pybamm.Parameter("Electrode Area [cm2]")
@@ -54,17 +53,16 @@ class CatalyticModel:
         #get diffusion in here
         I_0 = (F * a * Gamma / T_0)  #units are A; this is (F^2) a Gammav / RT
 
+        #creating time scale and non-dimensionalizing
+        Tmax_d = abs(E_start_d - E_reverse_d)/v * 2
+        Tmax_nd = Tmax_d / T_0
+
         # Non-dimensionalise parameters
         E0 = E0_d / E_0 #no units
-    #old way of defining Es
+
         E_start = E_start_d / E_0
         E_reverse = E_reverse_d / E_0
         t_reverse = E_start - E_reverse
-    #rewritten ways (with sigma)
-        # E_start =  (E_start_d / E_0) - E0 #no units
-        # E_reverse = (E_reverse_d / E_0) - E0 #no units
-        # sigma = v * a / (E_0 * D) #no units
-        # t_reverse = (E_start - E_reverse) / sigma #no units
 
         k0 = k0_d * a #no units: D isn't in this because it's already on the surface
         kcat_for = kcat_forward_d * T_0 * Ctot #no units
@@ -72,7 +70,6 @@ class CatalyticModel:
         
         Cdl = Cdl_d * E_0 / (I_0 * T_0) #21 Mar 21 - removed area, no units now
         Ru = Ru_d * I_0 / E_0 #no units
-
 
         #irrelevant for now
         # omega = 2 * np.pi * omega_d * T_0 #AC related
@@ -86,16 +83,7 @@ class CatalyticModel:
         Eapp = E_start + \
             (pybamm.t <= t_reverse) * Edc_forward + \
             (pybamm.t > t_reverse) * Edc_backwards
-            #deltaE * pybamm.sin(omega * pybamm.t)
-
-        
-    #2 Apr 23: Eapp rewritten to contain scanrate and nondim time
-        # t_nd = pybamm.t / T_0
-        # Edc_forward = E_start - (sigma * t_nd)
-        # Edc_backwards = E_reverse + sigma * (t_nd - t_reverse)
-        # Eapp = (t_nd <= t_reverse) * Edc_forward + \
-        #     (t_nd > t_reverse) * Edc_backwards + \
-        #     deltaE * pybamm.sin(omega * t_nd)                        
+            #deltaE * pybamm.sin(omega * pybamm.t)                    
 
         # create PyBaMM model object
         model = pybamm.BaseBatteryModel(options=seioptions)
@@ -112,12 +100,12 @@ class CatalyticModel:
         ###########################
 
         # Create state variables for model
-        c_Ox = pybamm.Variable("O(surf) [non-dim]", domain="solution")
+        c_Ox = pybamm.Variable("O(surf) [non-dim]", domain="surface")
+        c_Red = pybamm.Variable("R(surf) .[non-dim]", domain="surface")
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
         i = pybamm.Variable("Current [non-dim]")
 
-        #TODO: Why is this in i_f?
         # Effective potential
         Eeff = Eapp - i * Ru #no units
 
@@ -132,7 +120,6 @@ class CatalyticModel:
                     )         
 
         # defining boundary values
-        #c_Ox_boundary = pybamm.BoundaryValue(c_Ox, "left")
         c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
         c_at_electrode_p = pybamm.BoundaryValue(c_p, "left")
 
@@ -143,15 +130,11 @@ class CatalyticModel:
         # PDEs - left hand side is assumed to be time derivative of the PDE
         model.rhs = {
             c_Ox: i_f + cat_con, #i_f is the echem contribution, cat_con is chemical contribution
-            i: (i_f + Cdl * Eapp.diff(pybamm.t) - i)/T_0, # current divided by non-dim "s" obtained from Cdl and Ru term
-            #i: (i_f - cat_con - i)/T_0, # current divided by non-dim "s" obtained from Cdl and Ru term
-            c_s: pybamm.div(pybamm.grad(c_s)), #TODO: understand this
-            c_p: pybamm.div(pybamm.grad(c_p))
+            c_Red: -c_Ox,
+            i: (i_f + Cdl * Eapp.diff(pybamm.t) - i), # contains capacitive current term
+            c_s: pybamm.div(pybamm.grad(c_s)),
+            c_p: pybamm.div(pybamm.grad(c_p)),
         }
-
-        # algebraic equations (none)
-        # model.algebraic = {
-        # }
 
         # Setting boundary and initial conditions
         model.boundary_conditions = {
@@ -169,7 +152,8 @@ class CatalyticModel:
 
         model.initial_conditions = {
             c_Ox: pybamm.Scalar(1),
-            i: Cdl * Eapp.diff(pybamm.t), #having Cdl here is fine (if it's 0, starting i is 0)
+            c_Red: pybamm.Scalar(0),
+            i: Cdl * Eapp.diff(pybamm.t), #again, capacitive current (if it's 0, starting i is 0)
             c_s: (CS_d/Ctot),
             c_p: (CP_d/Ctot),
         }
@@ -241,22 +225,29 @@ class CatalyticModel:
         self._CP_d = param.process_symbol(CP_d).evaluate()
         self._Ctot = param.process_symbol(Ctot).evaluate()
 
+        # store time scale related things
+        self._Tmax_d = param.process_symbol(Tmax_d).evaluate()
+
     #Actual simulation function
-    def simulate(self, parameters, times):
+    def simulate(self, parameters):
         #####DEBUGGING#####
         #pybamm.set_logging_level("DEBUG")
+
+        #7 May 23: method to pull times from init
+        Times_d = np.linspace(0, self._Tmax_d, 2**12)
+        times_nd = Times_d / self._T_0
         try:
-            solution = self._solver.solve(self._model, times, inputs=parameters)
+            solution = self._solver.solve(self._model, times_nd, inputs=parameters)
         except pybamm.SolverError as e:
             print(e)
-            solution = np.zeros_like(times)
+            solution = np.zeros_like(times_nd)
         return (
-            solution["Current [non-dim]"](times),
-            solution["Applied Voltage [non-dim]"](times),
-            solution["O(surf) [non-dim]"](times),
-            solution["S(soln) at electrode [non-dim]"](times),
-            solution["P(soln) at electrode [non-dim]"](times),
-            #parameters
+            solution["Current [non-dim]"](times_nd),
+            solution["Applied Voltage [non-dim]"](times_nd),
+            solution["O(surf) [non-dim]"](times_nd),
+            solution["S(soln) at electrode [non-dim]"](times_nd),
+            solution["P(soln) at electrode [non-dim]"](times_nd),
+            times_nd
         )
 
 #TODO: Make a redimensionalise function
