@@ -50,6 +50,14 @@ def main(const_parameters,input_parameters):
     plt.ylabel("Surface Concentration [non-dim]")
     plt.legend()
     plt.savefig("output/surfconcvstime_cat01.png")
+
+    plt.cla()
+    plt.plot(T_nd, S_nd, label="S")
+    plt.plot(T_nd, P_nd, label="P")
+    plt.xlabel("time [non-dim]")
+    plt.ylabel("Solution Concentration [non-dim]")
+    plt.legend()
+    plt.savefig("output/solconcvstime_cat01.png")
     return
 
 if __name__ =='__main__':
@@ -77,8 +85,8 @@ if __name__ =='__main__':
     input_parameters = {
         "Reversible Potential [V]": 0.0,
         "Redox Rate [s-1]": 10000,
-        "Catalytic Rate For [cm3 mol-l s-1]": 1e5,
-        "Catalytic Rate Back [cm3 mol-l s-1]": 1e-3,
+        "Catalytic Rate For [cm3 mol-l s-1]": 1,
+        "Catalytic Rate Back [cm3 mol-l s-1]": 1,
         "Symmetry factor [non-dim]": 0.5,
         #28 Mar 2023: not fully implemented
         "Capacitance [F]": 1e-8,
