@@ -77,8 +77,8 @@ if __name__ =='__main__':
     input_parameters = {
         "Reversible Potential [V]": 0.0,
         "Redox Rate [s-1]": 10000,
-        "Catalytic Rate For [cm3 mol-l s-1]": 1e5,
-        "Catalytic Rate Back [cm3 mol-l s-1]": 1e-3,
+        "Catalytic Rate For [cm2 mol-l s-1]": 1e5,
+        "Catalytic Rate Back [cm2 mol-l s-1]": 1e-3,
         "Symmetry factor [non-dim]": 0.5,
         #28 Mar 2023: not fully implemented
         "Capacitance [F]": 1e-8,

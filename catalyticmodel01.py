@@ -37,8 +37,8 @@ class CatalyticModel:
         # Create dimensional input parameters
         E0_d = pybamm.InputParameter("Reversible Potential [V]")
         k0_d = pybamm.InputParameter("Redox Rate [s-1]")
-        kcat_forward_d = pybamm.InputParameter("Catalytic Rate For [cm3 mol-l s-1]")
-        kcat_backward_d = pybamm.InputParameter("Catalytic Rate Back [cm3 mol-l s-1]")
+        kcat_forward_d = pybamm.InputParameter("Catalytic Rate For [cm2 mol-l s-1]")
+        kcat_backward_d = pybamm.InputParameter("Catalytic Rate Back [cm2 mol-l s-1]")
         alpha = pybamm.InputParameter("Symmetry factor [non-dim]")
         Cdl_d = pybamm.InputParameter("Capacitance [F]")
         Ru_d = pybamm.InputParameter("Uncompensated Resistance [Ohm]")
