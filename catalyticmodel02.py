@@ -32,15 +32,16 @@ class CatalyticModel:
         # Create dimensional input parameters
         E0_d = pybamm.InputParameter("Reversible Potential [V]")
         k0_d = pybamm.InputParameter("Redox Rate [s-1]")
-        kcat_forward_d = pybamm.InputParameter("Catalytic Rate For [cm2 mol-l s-1]")
-        kcat_backward_d = pybamm.InputParameter("Catalytic Rate Back [cm2 mol-l s-1]")
+        kcat_forward_d = pybamm.InputParameter("Catalytic Rate For [cm3 mol-l s-1]")
+        kcat_backward_d = pybamm.InputParameter("Catalytic Rate Back [cm3 mol-l s-1]")
         alpha = pybamm.InputParameter("Symmetry factor [non-dim]")
         Cdl_d = pybamm.InputParameter("Capacitance [F]")
         Ru_d = pybamm.InputParameter("Uncompensated Resistance [Ohm]")
 
         # Create scaling factors for non-dimensionalisation
         E_0 = (R * T)/ F #units are V
-        T_0 = a / DS_d #units are seconds
+        T_0 = E_0 / v #units are seconds
+        Ctot = CS_d + CP_d #units are mol cm-3
         
         #get diffusion in here
         I_0 = (F * a * Gamma / T_0)  #units are A; this is (F^2) a Gammav / RT
@@ -48,7 +49,7 @@ class CatalyticModel:
         #creating time scale and non-dimensionalizing
         Tmax_d = abs(E_start_d - E_reverse_d)/v * 2
         Tmax_nd = Tmax_d / T_0
-
+        
         # Non-dimensionalise parameters
         E0 = E0_d / E_0 #no units
 
@@ -56,17 +57,14 @@ class CatalyticModel:
         E_reverse = E_reverse_d / E_0
         t_reverse = E_start - E_reverse
 
-        #FIXME 8 May 23: trying to create a deltaT for timesteps
         k0 = k0_d * T_0 #no units
-        kcat_for = kcat_forward_d * (DS_d * a / Gamma) #no units
-        kcat_back = kcat_backward_d * (DS_d * a / Gamma) #no units
+        kcat_for = kcat_forward_d * Ctot #no units
+        kcat_back = kcat_backward_d * T_0 * Ctot #no units
+
         #Diffusion coefficients
         d_S = DS_d/DS_d #no units
         d_P = DP_d/DS_d #no units
-        #Concentrations
-        cs_nd = CS_d/CS_d
-        cp_nd = CP_d/CS_d
-
+        
         Cdl = Cdl_d * E_0 / (I_0 * T_0) #no units
         Ru = Ru_d * I_0 / E_0 #no units
 
@@ -133,8 +131,8 @@ class CatalyticModel:
             sc_Ox: pybamm.Scalar(1),
             sc_Red: pybamm.Scalar(0),
             i: Cdl * Eapp.diff(pybamm.t), #again, capacitive current (if it's 0, starting i is 0)
-            c_s: cs_nd,
-            c_p: cp_nd,
+            c_s: (CS_d/Ctot),
+            c_p: (CP_d/Ctot),
         }
 
         # set spatial variables and domain geometry
@@ -201,6 +199,7 @@ class CatalyticModel:
         self._T_0 = param.process_symbol(T_0).evaluate()
         self._CS_d = param.process_symbol(CS_d).evaluate()
         self._CP_d = param.process_symbol(CP_d).evaluate()
+        self._Ctot = param.process_symbol(Ctot).evaluate()
 
         # store time scale related things
         self._Tmax_d = param.process_symbol(Tmax_d).evaluate()
