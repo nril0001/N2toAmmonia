@@ -174,6 +174,8 @@ class CatalyticModel:
             "R(surf) [non-dim]": sc_Red,
             "S(soln) at electrode [non-dim]": c_at_electrode_s,
             "P(soln) at electrode [non-dim]": c_at_electrode_p,
+            "Cat_conc": cat_con,
+            "i_f": i_f,
         }
         
         # Set model parameters
@@ -229,6 +231,8 @@ class CatalyticModel:
             solution["R(surf) [non-dim]"](times_nd),
             solution["S(soln) at electrode [non-dim]"](times_nd),
             solution["P(soln) at electrode [non-dim]"](times_nd),
+            solution["Cat_conc"](times_nd),
+            solution["i_f"](times_nd),
             times_nd
         )
 
