@@ -42,6 +42,9 @@ class CatalyticModel:
         E_0 = (R * T)/ F #units are V
         T_0 = a / DS_d #units are seconds
         
+        #old factor
+        T_step = E_0 / v 
+        
         #get diffusion in here
         I_0 = (F * a * Gamma / T_0)  #units are A; this is (F^2) a Gammav / RT
         
@@ -52,14 +55,20 @@ class CatalyticModel:
         E_start = E_start_d / E_0
         E_reverse = E_reverse_d / E_0
         t_reverse = E_start - E_reverse
+        deltaE = abs(E_start - E_reverse)/2000
         
         #creating time scale and non-dimensionalizing
-        Tmax_d = abs(E_start_d - E_reverse_d)/v * 2
-        Tmax_nd = Tmax_d / T_0
-        
-        deltaE = abs(E_start - E_reverse)/2000
         deltaT = deltaE/sigma
-        m = Tmax_nd/(deltaT)
+        Tmax_d = abs(E_start_d - E_reverse_d)/v * 2
+        Tmax_nd = Tmax_d / T_step
+        new_Tmax_nd = 2 * abs(t_reverse)/sigma
+        x_max = 6*pybamm.sqrt(Tmax_nd)
+        m = new_Tmax_nd/(deltaT)
+        
+        #old method of defining time steps
+        
+        
+        
 
         k0 = k0_d * T_0 #no units
         kcat_for = kcat_forward_d * (DS_d * a / Gamma) #no units
@@ -74,8 +83,7 @@ class CatalyticModel:
         
         Cdl = Cdl_d * E_0 / (I_0 * T_0) #no units
         Ru = Ru_d * I_0 / E_0 #no units
-
-
+    
         # Input voltage protocol
         Edc_forward = -pybamm.t
         Edc_backwards = pybamm.t - 2 * t_reverse
@@ -144,7 +152,6 @@ class CatalyticModel:
 
         # set spatial variables and domain geometry
         x = pybamm.SpatialVariable('x', domain="solution")
-        x_max = 6*pybamm.sqrt(Tmax_nd)
         model.geometry = pybamm.Geometry({
             "solution": {
                     x: {
@@ -177,6 +184,8 @@ class CatalyticModel:
             "R(surf) [non-dim]": sc_Red,
             "S(soln) at electrode [non-dim]": c_at_electrode_s,
             "P(soln) at electrode [non-dim]": c_at_electrode_p,
+            "Cat_conc": cat_con,
+            "i_f": i_f,
         }
         
         # Set model parameters
@@ -208,7 +217,7 @@ class CatalyticModel:
         self._CP_d = param.process_symbol(CP_d).evaluate()
 
         # store time scale related things
-        self._Tmax_d = param.process_symbol(Tmax_d).evaluate()
+        self._Tmax_nd = param.process_symbol(Tmax_nd).evaluate()
         self._m = param.process_symbol(m).evaluate()
         
         print("Catalytic Model 02 initialized successfully.")
@@ -218,8 +227,7 @@ class CatalyticModel:
         #pybamm.set_logging_level("DEBUG")
 
         #7 May 23: method to pull times from init
-        Times_d = np.linspace(0, self._Tmax_d, int(self._m))
-        times_nd = Times_d/self._T_0
+        times_nd = np.linspace(0, self._Tmax_nd, int(self._m))
         print(self._m)
         try:
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
@@ -233,6 +241,8 @@ class CatalyticModel:
             solution["R(surf) [non-dim]"](times_nd),
             solution["S(soln) at electrode [non-dim]"](times_nd),
             solution["P(soln) at electrode [non-dim]"](times_nd),
+            solution["Cat_conc"](times_nd),
+            solution["i_f"](times_nd),
             times_nd
         )
 
