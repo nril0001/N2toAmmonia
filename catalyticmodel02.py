@@ -54,25 +54,21 @@ class CatalyticModel:
 
         E_start = E_start_d / E_0
         E_reverse = E_reverse_d / E_0
-        t_reverse = E_start - E_reverse
-        deltaE = abs(E_start - E_reverse)/2000
         
         #creating time scale and non-dimensionalizing
-        deltaT = deltaE/sigma
         Tmax_d = abs(E_start_d - E_reverse_d)/v * 2
-        Tmax_nd = Tmax_d / T_step
-        new_Tmax_nd = 2 * abs(t_reverse)/sigma
+        Tmax_nd = Tmax_d / T_0
+        new_Tmax_nd = 2 * abs(E_start-E_reverse)/sigma
         x_max = 6*pybamm.sqrt(Tmax_nd)
-        m = new_Tmax_nd/(deltaT)
-        
-        #old method of defining time steps
-        
-        
+        m = 2**12
+        t_reverse = Tmax_nd/2
         
 
         k0 = k0_d * T_0 #no units
         kcat_for = kcat_forward_d * (DS_d * a / Gamma) #no units
         kcat_back = kcat_backward_d * (DS_d * a / Gamma) #no units\
+            
+            
         #Diffusion coefficients
         d_S = DS_d/DS_d #no units
         d_P = DP_d/DS_d #no units
@@ -85,8 +81,8 @@ class CatalyticModel:
         Ru = Ru_d * I_0 / E_0 #no units
     
         # Input voltage protocol
-        Edc_forward = -pybamm.t
-        Edc_backwards = pybamm.t - 2 * t_reverse
+        Edc_forward = -pybamm.t*sigma
+        Edc_backwards = pybamm.t*sigma - 2 * t_reverse*sigma
         Eapp = E_start + \
             (pybamm.t <= t_reverse) * Edc_forward + \
             (pybamm.t > t_reverse) * Edc_backwards                   
@@ -103,7 +99,7 @@ class CatalyticModel:
         i = pybamm.Variable("Current [non-dim]")
 
         # Effective potential
-        Eeff = Eapp - i * Ru #no units
+        Eeff = Eapp #no units
 
         #"left" indicates environment directly on electrode surface; x = 0
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
@@ -186,6 +182,7 @@ class CatalyticModel:
             "P(soln) at electrode [non-dim]": c_at_electrode_p,
             "Cat_conc": cat_con,
             "i_f": i_f,
+            "k0": k0_d,
         }
         
         # Set model parameters
@@ -218,8 +215,7 @@ class CatalyticModel:
 
         # store time scale related things
         self._Tmax_nd = param.process_symbol(Tmax_nd).evaluate()
-        self._m = param.process_symbol(m).evaluate()
-        
+        self._m = m        
         print("Catalytic Model 02 initialized successfully.")
 
     def simulate(self, parameters):
@@ -243,6 +239,7 @@ class CatalyticModel:
             solution["P(soln) at electrode [non-dim]"](times_nd),
             solution["Cat_conc"](times_nd),
             solution["i_f"](times_nd),
+            solution["k0"](times_nd),
             times_nd
         )
 

@@ -39,11 +39,10 @@ class CatalyticModel:
         Ru_d = pybamm.InputParameter("Uncompensated Resistance [Ohm]")
 
         # Create scaling factors for non-dimensionalisation
-        E_0 = (R * T)/ F #units are V
+        E_0 = (R * T)/F #units are V
         T_0 = v/E_0 #units are seconds
-        
-        #get diffusion in here
-        I_0 = (a * F * DS_d * CS_d)  #units are A; this is (F^2) a Gammav / RT
+        X_0 = pybamm.sqrt((F*v)/(R*T*DS_d)) #units are cm
+        I_0 = E_0*(1/(F*a*Gamma*v))  #units are A; this is (F^2) a Gammav / RT
         
         # Non-dimensionalise parameters
         E0 = E0_d / E_0 #no units
@@ -55,13 +54,11 @@ class CatalyticModel:
         #creating time scale and non-dimensionalizing
         Tmax_nd = (abs(E_start_d - E_reverse_d)/v * 2)*T_0
         
-        deltaE = abs(E_start_d - E_reverse_d)/2000
-        deltaT = (deltaE/v)*T_0
-        m = Tmax_nd/(deltaT)
+        m = 2**12
 
         k0 = (k0_d/v) * E_0 #no units
-        kcat_for = (kcat_forward_d/DS_d) * pybamm.sqrt(E_0*(DS_d/v)) #no units
-        kcat_back = (kcat_backward_d/DS_d) * pybamm.sqrt(E_0*(DS_d/v)) #no units\
+        kcat_for = (kcat_forward_d*Gamma/v)*E_0 #no units
+        kcat_back = (kcat_backward_d*Gamma/v)*E_0 #no units\
         #Diffusion coefficients
         d_S = DS_d/DS_d #no units
         d_P = DP_d/DS_d #no units
@@ -176,6 +173,7 @@ class CatalyticModel:
             "P(soln) at electrode [non-dim]": c_at_electrode_p,
             "Cat_conc": cat_con,
             "i_f": i_f,
+            "k0": k0_d,
         }
         
         # Set model parameters
@@ -208,7 +206,7 @@ class CatalyticModel:
 
         # store time scale related things
         self._Tmax_nd = param.process_symbol(Tmax_nd).evaluate()
-        self._m = param.process_symbol(m).evaluate()
+        self._m = m
         
         print("Catalytic Model 02 initialized successfully.")
 
@@ -233,6 +231,7 @@ class CatalyticModel:
             solution["P(soln) at electrode [non-dim]"](times_nd),
             solution["Cat_conc"](times_nd),
             solution["i_f"](times_nd),
+            solution["k0"](times_nd),
             times_nd
         )
 

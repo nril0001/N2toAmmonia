@@ -11,11 +11,11 @@ def main(const_parameters,input_parameters):
     #setting main model to reference CatalyticModel class
     cmodel = cm2.CatalyticModel(const_parameters,seioptions)
     #setting solved answers to ones usable here
-    current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, T_nd = cmodel.simulate(input_parameters)
+    current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
     ##redimensionalizing here for now. Messy to do in main, move later
     I_d = current * cmodel._I_0
     E_d = E_nd * cmodel._E_0
-    
+    print(k0[0])
     
     #QUICK PLOTS, IMPROVE# 
     plt.cla()
@@ -39,14 +39,11 @@ def main(const_parameters,input_parameters):
     plt.savefig("output/currentvstime_cat01.png")
     
     plt.cla()
-    plt.plot(T_nd, O_nd, label="O_nd")
-    plt.plot(T_nd, R_nd, label="R_nd")
+    plt.plot(T_nd, E_nd)
     plt.xlabel("time [non-dim]")
-    plt.ylabel("Surface Concentration [non-dim]")
-    plt.legend()
-    plt.savefig("output/surfconcvstime_cat01.png")
-    np.savetxt("output/surfconcvstime_cat01.dat", np.transpose(np.vstack((T_nd, O_nd, R_nd))))
-
+    plt.ylabel("Eapp [non-dim]")
+    plt.savefig("output/Eappvstime_cat01.png")
+    
     plt.cla()
     plt.plot(T_nd, cat_conc, label="Cat_conc")
     plt.plot(T_nd, i_f, label="i_f")
@@ -56,11 +53,6 @@ def main(const_parameters,input_parameters):
     plt.savefig("output/ratesvstime_cat01.png")
     np.savetxt("output/ratesvstime_cat01.dat", np.transpose(np.vstack((T_nd, O_nd, R_nd))))
     
-    plt.cla()
-    plt.plot(T_nd, E_nd)
-    plt.xlabel("time [non-dim]")
-    plt.ylabel("Eapp [non-dim]")
-    plt.savefig("output/Eappvstime_cat01.png")
     
     
     return
@@ -75,7 +67,7 @@ if __name__ =='__main__':
         "Gas constant [J K-1 mol-1]": 8.314459848,
         "Far-field concentration of S(soln) [mol cm-3]": 1e-6,
         "Far-field concentration of P(soln) [mol cm-3]": 0e-6,
-        "Diffusion Coefficient of S [cm2 s-1]": 1.5,
+        "Diffusion Coefficient of S [cm2 s-1]": 1e-5,
         "Diffusion Coefficient of P [cm2 s-1]": 1e-5,
         "Electrode Area [cm2]": 1,
         "Temperature [K]": 298,
@@ -90,7 +82,7 @@ if __name__ =='__main__':
     input_parameters = {
         "Reversible Potential [V]": 0.0,
         "Redox Rate [s-1]": 10000,
-        "Catalytic Rate For [cm2 mol-l s-1]": 1e5,
+        "Catalytic Rate For [cm2 mol-l s-1]": 1e-2,
         "Catalytic Rate Back [cm2 mol-l s-1]": 1e-3,
         "Symmetry factor [non-dim]": 0.5,
         #28 Mar 2023: not fully implemented
