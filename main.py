@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel03 as cm2
+import catalyticmodel03 as cm
 import numpy as np
 import time
 import matplotlib.pylab as plt
@@ -9,7 +9,7 @@ def main(const_parameters,input_parameters):
     #list of options to pass into the model
     seioptions = ()
     #setting main model to reference CatalyticModel class
-    cmodel = cm2.CatalyticModel(const_parameters,seioptions)
+    cmodel = cm.CatalyticModel(const_parameters,seioptions)
     #setting solved answers to ones usable here
     current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
     ##redimensionalizing here for now. Messy to do in main, move later
@@ -22,27 +22,27 @@ def main(const_parameters,input_parameters):
     plt.plot(E_d, I_d)
     plt.xlabel("Eapp [V]")
     plt.ylabel("current [A]")
-    plt.savefig("output/CurrentvsEappdim_cat01")
-    np.savetxt("output/cu rent_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, I_d))))
+    plt.savefig("output/CurrentvsEappdim_cat03.png")
+    # np.savetxt("output/cu rent_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, I_d))))
 
     plt.cla()
     plt.plot(E_nd, current)
     plt.xlabel("Eapp [non-dim]")
     plt.ylabel("current [non-dim]")
     plt.savefig("output/currentvsEapp_cat01.png")
-    np.savetxt("output/current_nondim_pybamm_kf_1.dat", np.transpose(np.vstack((E_nd, current))))
+    # np.savetxt("output/current_nondim_pybamm_kf_1.dat", np.transpose(np.vstack((E_nd, current))))
 
     plt.cla()
     plt.plot(T_nd, current)
     plt.xlabel("time [non-dim]")
     plt.ylabel("current [non-dim]")
-    plt.savefig("output/currentvstime_cat01.png")
+    plt.savefig("output/currentvstime_cat03.png")
     
     plt.cla()
     plt.plot(T_nd, E_nd)
     plt.xlabel("time [non-dim]")
     plt.ylabel("Eapp [non-dim]")
-    plt.savefig("output/Eappvstime_cat01.png")
+    plt.savefig("output/Eappvstime_cat03.png")
     
     plt.cla()
     plt.plot(T_nd, cat_conc, label="Cat_conc")
@@ -50,10 +50,8 @@ def main(const_parameters,input_parameters):
     plt.xlabel("time [non-dim]")
     plt.ylabel("rates [non-dim]")
     plt.legend()
-    plt.savefig("output/ratesvstime_cat01.png")
-    np.savetxt("output/ratesvstime_cat01.dat", np.transpose(np.vstack((T_nd, O_nd, R_nd))))
-    
-    
+    plt.savefig("output/ratesvstime_cat03.png")
+    # np.savetxt("output/ratesvstime_cat01.dat", np.transpose(np.vstack((T_nd, O_nd, R_nd))))
     
     return
 
@@ -65,7 +63,7 @@ if __name__ =='__main__':
     const_parameters = {
         "Faraday Constant [C mol-1]": 96485.3328959,
         "Gas constant [J K-1 mol-1]": 8.314459848,
-        "Far-field concentration of S(soln) [mol cm-3]": 1e-6,
+        "Far-field concentration of S(soln) [mol cm-3]": 1e-2,
         "Far-field concentration of P(soln) [mol cm-3]": 0e-6,
         "Diffusion Coefficient of S [cm2 s-1]": 1e-5,
         "Diffusion Coefficient of P [cm2 s-1]": 1e-5,
@@ -75,19 +73,19 @@ if __name__ =='__main__':
         "Voltage reverse [V]": -0.5,
         "Voltage amplitude [V]": 0.0,
         "Scan Rate [V s-1]": 0.05,
-        "Electrode Coverage [mol cm-2]": 1e-12,
+        "Electrode Coverage [mol cm-2]": 1e-10,
     }
 
     #conditions that will change often over the course of testing
     input_parameters = {
         "Reversible Potential [V]": 0.0,
         "Redox Rate [s-1]": 10000,
-        "Catalytic Rate For [cm2 mol-l s-1]": 1e-2,
+        "Catalytic Rate For [cm2 mol-l s-1]": 1e-3,
         "Catalytic Rate Back [cm2 mol-l s-1]": 1e-3,
         "Symmetry factor [non-dim]": 0.5,
         #28 Mar 2023: not fully implemented
-        "Capacitance [F]": 1e-8,
-        "Uncompensated Resistance [Ohm]": 1.0
+        "Capacitance [F]": 0, #1e-8,
+        "Uncompensated Resistance [Ohm]": 0.0
     }
 
     main(const_parameters,input_parameters)

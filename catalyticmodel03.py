@@ -39,10 +39,10 @@ class CatalyticModel:
         Ru_d = pybamm.InputParameter("Uncompensated Resistance [Ohm]")
 
         # Create scaling factors for non-dimensionalisation
-        E_0 = (R * T)/F #units are V
-        T_0 = v/E_0 #units are seconds
-        X_0 = pybamm.sqrt((F*v)/(R*T*DS_d)) #units are cm
-        I_0 = E_0*(1/(F*a*Gamma*v))  #units are A; this is (F^2) a Gammav / RT
+        E_0 = (R * T) / F #units are V
+        T_0 = E_0 / v #units are seconds
+        X_0 = pybamm.sqrt((F * v) / (R * T * DS_d)) #units are cm
+        I_0 = (F * a * Gamma * v) / E_0  #units are A
         
         # Non-dimensionalise parameters
         E0 = E0_d / E_0 #no units
@@ -52,13 +52,13 @@ class CatalyticModel:
         t_reverse = E_start - E_reverse
         
         #creating time scale and non-dimensionalizing
-        Tmax_nd = (abs(E_start_d - E_reverse_d)/v * 2)*T_0
+        Tmax_nd = (abs(E_start_d - E_reverse_d) / v * 2)/ T_0
         
         m = 2**12
 
-        k0 = (k0_d/v) * E_0 #no units
-        kcat_for = (kcat_forward_d*Gamma/v)*E_0 #no units
-        kcat_back = (kcat_backward_d*Gamma/v)*E_0 #no units\
+        k0 = k0_d * T_0 #no units
+        kcat_for = kcat_forward_d * Gamma * T_0 #no units
+        kcat_back = kcat_backward_d * Gamma * T_0 #no units
         #Diffusion coefficients
         d_S = DS_d/DS_d #no units
         d_P = DP_d/DS_d #no units
@@ -110,9 +110,9 @@ class CatalyticModel:
         model.rhs = {
             sc_Ox: i_f + cat_con, #i_f is the echem contribution, cat_con is chemical contribution
             sc_Red: -i_f - cat_con,
-            i: i_f - i, # capacitive current + Cdl * Eapp.diff(pybamm.t) 
-            c_s: DS_d * pybamm.div(pybamm.grad(c_s)),
-            c_p: DP_d * pybamm.div(pybamm.grad(c_p)),
+            i: i_f - i + Cdl * Eapp.diff(pybamm.t),
+            c_s: d_S * pybamm.div(pybamm.grad(c_s)),
+            c_p: d_P * pybamm.div(pybamm.grad(c_p)),
         }
 
         # Setting boundary and initial conditions
@@ -208,7 +208,7 @@ class CatalyticModel:
         self._Tmax_nd = param.process_symbol(Tmax_nd).evaluate()
         self._m = m
         
-        print("Catalytic Model 02 initialized successfully.")
+        print("Catalytic Model 03 initialized successfully.")
 
     def simulate(self, parameters):
         #####DEBUGGING#####
@@ -216,7 +216,7 @@ class CatalyticModel:
 
         #7 May 23: method to pull times from init
         times_nd = np.linspace(0, self._Tmax_nd, int(self._m))
-        print(self._m)
+        print(f"Number of timesteps: " + str(self._m))
         try:
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
         except pybamm.SolverError as e:
