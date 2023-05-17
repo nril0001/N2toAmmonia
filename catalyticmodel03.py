@@ -83,7 +83,7 @@ class CatalyticModel:
         # Create state variables for model
         #sc is surface concentration
         sc_Ox = pybamm.Variable("O(surf) [non-dim]")
-        sc_Red = pybamm.Variable("R(surf) .[non-dim]")
+        sc_Red = pybamm.Variable("R(surf) [non-dim]")
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
         i = pybamm.Variable("Current [non-dim]")
@@ -97,7 +97,7 @@ class CatalyticModel:
         # Faradaic current (Butler Volmer)
         i_f = k0 * ((sc_Red) * pybamm.exp((1-alpha) * (Eeff - E0)) #contribution of Red
                     - sc_Ox * pybamm.exp(-alpha * (Eeff - E0)) #contribution of Ox
-                    )         
+                    )
 
         # defining boundary values for S and P
         c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
@@ -105,12 +105,16 @@ class CatalyticModel:
         
         #catalytic rate contribution (this was previoulsly written as catalytic current)
         cat_con = kcat_for * c_at_electrode_s * (sc_Red) - kcat_back * c_at_electrode_p * (sc_Ox)
+        
+        #Faradaic current derivative wrt time (incomplete, doesn't have dE/dT)
+        #this is nasty, find a way to clean this up
+        di_f = (k0 * (i_f + cat_con) * pybamm.exp(-alpha * (Eeff - E0))) * ((alpha - 1) * pybamm.exp(Eeff - E0) + alpha)
 
         # PDEs - left hand side is assumed to be time derivative of the PDE
         model.rhs = {
             sc_Ox: i_f + cat_con, #i_f is the echem contribution, cat_con is chemical contribution
             sc_Red: -i_f - cat_con,
-            i: i_f - i + Cdl * Eapp.diff(pybamm.t),
+            i: (di_f + Cdl) * Eapp.diff(pybamm.t),
             c_s: d_S * pybamm.div(pybamm.grad(c_s)),
             c_p: d_P * pybamm.div(pybamm.grad(c_p)),
         }
