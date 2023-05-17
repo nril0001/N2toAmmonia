@@ -23,7 +23,6 @@ def main(const_parameters,input_parameters):
             "Catalytic Rate For [cm2 mol-l s-1]": 0,
             "Catalytic Rate Back [cm2 mol-l s-1]": 0,
             "Symmetry factor [non-dim]": 0.5,
-            #28 Mar 2023: not fully implemented
             "Capacitance [F]": 0, #1e-8,
             "Uncompensated Resistance [Ohm]": 0.0
         }
@@ -37,7 +36,8 @@ def main(const_parameters,input_parameters):
             row = row.split("\t")
             voltage.append(float(row[0]))
             curr.append(float(row[1]))
-        
+
+        #flipping current values from DigiElech
         curr = np.array(curr) * (-1)
         
         potential = []
@@ -56,6 +56,7 @@ def main(const_parameters,input_parameters):
         ##redimensionalizing here for now. Messy to do in main, move later
         I_d = current * cmodel._I_0
         E_d = E_nd * cmodel._E_0
+
         offset_E = []
         maxx = E_d[np.where(I_d==max(I_d))[0][0]]
         minn = E_d[np.where(I_d==min(I_d))[0][0]]
@@ -66,7 +67,7 @@ def main(const_parameters,input_parameters):
             
         k00 = str(i[1])
     
-        #QUICK PLOTS, IMPROVE# 
+        #QUICK PLOTS# 
         plt.cla()
         plt.plot(E_d, I_d, color = "b", label = "PyBamm")
         plt.plot(voltage, curr, color = 'g', label = 'Digielch')
@@ -79,8 +80,8 @@ def main(const_parameters,input_parameters):
         np.savetxt("output/CurrentvsEappdim_k0_"+k00+".dat", np.transpose(np.vstack((E_d, I_d))))
         
         plt.cla()
-        plt.plot(offset_E[:10001], (I_d[:10001]), color = "red", label = "Pybamm Maxmium peak")
-        plt.plot(offset_E[10001:], (I_d[10001:]), color = "orange", label = "Pybamm Minimum peak")
+        plt.plot(offset_E[:10001], (I_d[:10001]), color = "red", label = "Pybamm Maxmium peak (Oxidation)")
+        plt.plot(offset_E[10001:], (I_d[10001:]), color = "orange", label = "Pybamm Minimum peak (Reduction)")
         plt.plot(voltage, curr, color = 'g', label = 'Digielch')
         plt.title("Offset Voltammogram k0: " + k00)
         plt.xlabel("Eapp [V]")
@@ -90,8 +91,8 @@ def main(const_parameters,input_parameters):
         plt.savefig("output/CurrentvsOffsetEappdim_k0_"+k00+".png", dpi=600)
         
         plt.cla()
-        plt.plot(offset_E[:10001], abs(I_d[:10001]), color = "red", label = "Maxmium peak")
-        plt.plot(offset_E[10001:], abs(I_d[10001:]), color = "orange", label = "Minimum peak")
+        plt.plot(offset_E[:10001], abs(I_d[:10001]), color = "red", label = "Maxmium peak (Oxidation)")
+        plt.plot(offset_E[10001:], abs(I_d[10001:]), color = "orange", label = "Minimum peak (Reduction)")
         plt.title("k0: " + k00)
         plt.xlabel("Eapp [V]")
         plt.ylabel("current [A]")
@@ -101,16 +102,16 @@ def main(const_parameters,input_parameters):
         np.savetxt("output/offset_Evscurrent_k0_"+k00+".dat", np.transpose(np.vstack((E_d, I_d))))
         
         plt.cla()
-        plt.plot(E_d, O_nd, color = "red", label="PyBamm Conc O")
-        plt.plot(E_d, R_nd, color = "orange", label="PyBamm Conc R")
-        plt.plot(potential[:20000], surf_cov[:20000], color = "blue", label="DigiElch Conc O")
-        plt.plot(potential[20000:], surf_cov[20000:], color = "green", label="DigiElch Conc R")
+        plt.plot(E_d, O_nd, color = "red", label="PyBamm - Ox")
+        plt.plot(E_d, R_nd, color = "orange", label="PyBamm - Red")
+        plt.plot(potential[:20000], surf_cov[:20000], color = "blue", label="DigiElch - Ox")
+        plt.plot(potential[20000:], surf_cov[20000:], color = "green", label="DigiElch - Red")
         plt.title("Concentration Profile: " + k00)
         plt.xlabel("Potential [V]")
-        plt.ylabel("Conc O [non-dim]")
+        plt.ylabel("Surface Coverage [non-dim]")
         plt.legend()
         plt.grid()
-        plt.savefig("output/ConcOvstime_k0_"+k00+".png", dpi=600)
+        plt.savefig("output/SurfCoveragevsE_k0_"+k00+".png", dpi=600)
     
 # =============================================================================
 #         plt.cla()
@@ -173,7 +174,7 @@ if __name__ =='__main__':
         "Diffusion Coefficient of S [cm2 s-1]": 1e-5,
         "Diffusion Coefficient of P [cm2 s-1]": 1e-5,
         "Electrode Area [cm2]": 1,
-        "Temperature [K]": 298,
+        "Temperature [K]": 298.2,
         "Voltage start [V]": 0.5,
         "Voltage reverse [V]": -0.5,
         "Voltage amplitude [V]": 0.0,
