@@ -1,7 +1,3 @@
-surface coverage: number of species: 2
-
-species name: Ox
-number of E (V), % ofOx couples: 20000
 0.4999	100
 0.4998	100
 0.4997	100
@@ -20002,9 +19998,6 @@ number of E (V), % ofOx couples: 20000
 0.4998	100
 0.4999	100
 0.5	100
-
-species name: Red
-number of E (V), % ofRed couples: 20000
 0.4999	3.5604E-007
 0.4998	3.5743E-007
 0.4997	3.5882E-007
