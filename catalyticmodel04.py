@@ -86,10 +86,10 @@ class CatalyticModel:
         sc_Red = pybamm.Variable("R(surf) .[non-dim]")
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
-        i = pybamm.Variable("Current [non-dim]")
+        #i = pybamm.Variable("Current [non-dim]")
 
         # Effective potential
-        Eeff = Eapp - i * Ru #no units
+        Eeff = Eapp #no units
 
         #"left" indicates environment directly on electrode surface; x = 0
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
@@ -107,9 +107,8 @@ class CatalyticModel:
 
         # PDEs - left hand side is assumed to be time derivative of the PDE
         model.rhs = {
-            sc_Ox: i_f + cat_con, #i_f is the echem contribution, cat_con is chemical contribution
-            sc_Red: -i_f - cat_con,
-            i: i_f - i + Cdl * Eapp.diff(pybamm.t),
+            sc_Ox: i_f, #i_f is the echem contribution, cat_con is chemical contribution
+            sc_Red: -i_f,
             c_s: d_S * pybamm.div(pybamm.grad(c_s)),
             c_p: d_P * pybamm.div(pybamm.grad(c_p)),
         }
@@ -118,19 +117,18 @@ class CatalyticModel:
         model.boundary_conditions = {
             c_s: {
                 "right": (pybamm.Scalar(1), "Dirichlet"),
-                "left": (-cat_con, "Neumann"),                    
+                "left": (cat_con, "Neumann"),                    
             },
 
             c_p: {
                 "right": (pybamm.Scalar(0), "Dirichlet"),   #0 makes sense - we'll always be starting with no product
-                "left": (cat_con, "Neumann"),                 
+                "left": (-cat_con, "Neumann"),                 
             } 
         }
 
         model.initial_conditions = {
             sc_Ox: pybamm.Scalar(1),
             sc_Red: pybamm.Scalar(0),
-            i: Cdl * Eapp.diff(pybamm.t), #again, capacitive current (if it's 0, starting i is 0)
             c_s: d_S * (cs_nd),
             c_p: d_P * (cp_nd),
         }
@@ -164,7 +162,6 @@ class CatalyticModel:
 
         # model variables
         model.variables = {
-            "Current [non-dim]": i,
             "Applied Voltage [non-dim]": Eapp,
             "O(surf) [non-dim]": sc_Ox,
             "R(surf) [non-dim]": sc_Red,
@@ -232,7 +229,6 @@ class CatalyticModel:
             print(e)
             solution = np.zeros_like(times_nd)
         return (
-            solution["Current [non-dim]"](times_nd),
             solution["Applied Voltage [non-dim]"](times_nd),
             solution["O(surf) [non-dim]"](times_nd),
             solution["R(surf) [non-dim]"](times_nd),
