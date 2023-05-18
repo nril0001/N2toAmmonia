@@ -1,3 +1,6 @@
+"""
+rip i broke this - fix it up
+"""
 ## Main function
 import catalyticmodel03 as cm
 import numpy as np
@@ -11,9 +14,9 @@ def main(const_parameters,input_parameters):
     files = [['digielchcomp/surfaceonly/CV_k0_1.5.txt',1.5, 'digielchcomp/surfaceonly/SC_k0_1.5.txt'], 
              ['digielchcomp/surfaceonly/CV_k0_10.txt', 10, 'digielchcomp/surfaceonly/SC_k0_10.txt'],
              ['digielchcomp/surfaceonly/CV_k0_500.txt', 500, 'digielchcomp/surfaceonly/SC_k0_500.txt'], 
-             ['digielchcomp/surfaceonly/CV_k0_1000.txt', 1e5, 'digielchcomp/surfaceonly/SC_k0_1000.txt'],
-             ['digielchcomp/surfaceonly/CV_k0_1e7.txt', 1e7, 'digielchcomp/surfaceonly/SC_k0_1e7.txt'], 
-             ['digielchcomp/surfaceonly/CV_k0_1e9.txt', 1e9, 'digielchcomp/surfaceonly/SC_k0_1e9.txt'],]
+             ['digielchcomp/surfaceonly/CV_k0_1000.txt', 1000, 'digielchcomp/surfaceonly/SC_k0_1000.txt']]
+            #  ['digielchcomp/surfaceonly/CV_k0_1e7.txt', 1e7, 'digielchcomp/surfaceonly/SC_k0_1e7.txt'], 
+            #  ['digielchcomp/surfaceonly/CV_k0_1e9.txt', 1e9, 'digielchcomp/surfaceonly/SC_k0_1e9.txt'],]
     
     
     for i in files:
@@ -57,13 +60,13 @@ def main(const_parameters,input_parameters):
         I_d = current * cmodel._I_0
         E_d = E_nd * cmodel._E_0
 
-        offset_E = []
-        maxx = E_d[np.where(I_d==max(I_d))[0][0]]
-        minn = E_d[np.where(I_d==min(I_d))[0][0]]
-        for l in range(0, 10001):
-            offset_E.append(E_d[l] + maxx)
-        for l in range(10001, 20000):
-            offset_E.append(E_d[l] + minn)
+        # offset_E = []
+        # maxx = E_d[np.where(I_d==max(I_d))[0][0]]
+        # minn = E_d[np.where(I_d==min(I_d))[0][0]]
+        # for l in range(0, 10001):
+        #     offset_E.append(E_d[l] + maxx)
+        # for l in range(10001, 20000):
+        #     offset_E.append(E_d[l] + minn)
             
         k00 = str(i[1])
     
@@ -76,30 +79,30 @@ def main(const_parameters,input_parameters):
         plt.ylabel("current [A]")
         plt.grid()
         plt.legend()
-        plt.savefig("output/CurrentvsEappdim_k0_"+k00+".png", dpi=600)
+        plt.savefig("output/CatModel03/CurrentvsEappdim_k0_"+k00+".png", dpi=600)
         np.savetxt("output/CurrentvsEappdim_k0_"+k00+".dat", np.transpose(np.vstack((E_d, I_d))))
         
-        plt.cla()
-        plt.plot(offset_E[:10001], (I_d[:10001]), color = "red", label = "Pybamm Maxmium peak (Oxidation)")
-        plt.plot(offset_E[10001:], (I_d[10001:]), color = "orange", label = "Pybamm Minimum peak (Reduction)")
-        plt.plot(voltage, curr, color = 'g', label = 'Digielch')
-        plt.title("Offset Voltammogram k0: " + k00)
-        plt.xlabel("Eapp [V]")
-        plt.ylabel("current [A]")
-        plt.grid()
-        plt.legend()
-        plt.savefig("output/CurrentvsOffsetEappdim_k0_"+k00+".png", dpi=600)
+        # plt.cla()
+        # plt.plot(E_d[:10001], (I_d[:10001]), color = "red", label = "Pybamm Maxmium peak (Oxidation)")
+        # plt.plot(E_d[10001:], (I_d[10001:]), color = "orange", label = "Pybamm Minimum peak (Reduction)")
+        # plt.plot(voltage, curr, color = 'g', label = 'Digielch')
+        # plt.title("Offset Voltammogram k0: " + k00)
+        # plt.xlabel("Eapp [V]")
+        # plt.ylabel("current [A]")
+        # plt.grid()
+        # plt.legend()
+        # plt.savefig("output/CurrentvsOffsetEappdim_k0_"+k00+".png", dpi=600)
         
-        plt.cla()
-        plt.plot(offset_E[:10001], abs(I_d[:10001]), color = "red", label = "Maxmium peak (Oxidation)")
-        plt.plot(offset_E[10001:], abs(I_d[10001:]), color = "orange", label = "Minimum peak (Reduction)")
-        plt.title("k0: " + k00)
-        plt.xlabel("Eapp [V]")
-        plt.ylabel("current [A]")
-        plt.grid()
-        plt.legend()
-        plt.savefig("output/offset_Evscurrent_k0_"+k00+".png", dpi=600)
-        np.savetxt("output/offset_Evscurrent_k0_"+k00+".dat", np.transpose(np.vstack((E_d, I_d))))
+        # plt.cla()
+        # plt.plot(E_d[:10001], abs(I_d[:10001]), color = "red", label = "Maxmium peak (Oxidation)")
+        # plt.plot(E_d[:10001], abs(I_d[10001:]), color = "orange", label = "Minimum peak (Reduction)")
+        # plt.title("k0: " + k00)
+        # plt.xlabel("Eapp [V]")
+        # plt.ylabel("current [A]")
+        # plt.grid()
+        # plt.legend()
+        # plt.savefig("output/offset_Evscurrent_k0_"+k00+".png", dpi=600)
+        # np.savetxt("output/offset_Evscurrent_k0_"+k00+".dat", np.transpose(np.vstack((E_d, I_d))))
         
         plt.cla()
         plt.plot(E_d, O_nd, color = "red", label="PyBamm - Ox")
@@ -112,43 +115,7 @@ def main(const_parameters,input_parameters):
         plt.legend()
         plt.grid()
         plt.savefig("output/SurfCoveragevsE_k0_"+k00+".png", dpi=600)
-    
-# =============================================================================
-#         plt.cla()
-#         plt.plot(E_nd, current)
-#         plt.xlabel("Eapp [non-dim]")
-#         plt.ylabel("current [non-dim]")
-#         plt.grid()
-#         plt.savefig("output/currentvsEapp_cat01.png", dpi=600)
-#         # np.savetxt("output/current_nondim_pybamm_kf_1.dat", np.transpose(np.vstack((E_nd, current))))
-#     
-#         plt.cla()
-#         plt.plot(T_nd, current)
-#         plt.xlabel("time [non-dim]")
-#         plt.ylabel("current [non-dim]")
-#         plt.grid()
-#         plt.savefig("output/currentvstime_cat03.png", dpi=600)
-#         
-#         plt.cla()
-#         plt.plot(T_nd, E_nd)
-#         plt.xlabel("time [non-dim]")
-#         plt.ylabel("Eapp [non-dim]")
-#         plt.grid()
-#         plt.savefig("output/Eappvstime_cat03.png", dpi=600)
-# =============================================================================
-        
-# =============================================================================
-#         plt.cla()
-#         plt.plot(T_nd, cat_conc, label="Cat_conc")
-#         plt.plot(T_nd, i_f, label="i_f")
-#         plt.xlabel("time [non-dim]")
-#         plt.ylabel("rates [non-dim]")
-#         plt.legend()
-#         plt.grid()
-#         plt.savefig("output/ratesvstime_cat03.png", dpi=600)
-#         # np.savetxt("output/ratesvstime_cat01.dat", np.transpose(np.vstack((T_nd, O_nd, R_nd))))
-# =============================================================================
-        
+
         
         plt.cla()
         #plt.plot(voltage, curr, color = 'g', label = 'Digielch')
@@ -158,7 +125,6 @@ def main(const_parameters,input_parameters):
         plt.xlabel("Eapp [V]")
         plt.ylabel("current [A]")
         plt.savefig(i[0]+".png")
-        
     return
 
 if __name__ =='__main__':
@@ -189,7 +155,6 @@ if __name__ =='__main__':
         "Catalytic Rate For [cm2 mol-l s-1]": 0,
         "Catalytic Rate Back [cm2 mol-l s-1]": 0,
         "Symmetry factor [non-dim]": 0.5,
-        #28 Mar 2023: not fully implemented
         "Capacitance [F]": 0, #1e-8,
         "Uncompensated Resistance [Ohm]": 0.0
     }
@@ -199,7 +164,3 @@ if __name__ =='__main__':
 
     #literally just to test that that main is working properly (delete later)
     print("complete in time: " + str((time.time()-ti)/60) + " minutes")
-
-    #TODO: add multiple fxns for running models at the same time
-    #TODO: improve plotting for pybamm based models: investigate using pybamm's plotting features??
-    #TODO: LOW PRIORITY make compatible with interactive plottersz

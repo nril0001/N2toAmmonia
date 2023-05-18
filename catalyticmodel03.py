@@ -54,7 +54,7 @@ class CatalyticModel:
         #creating time scale and non-dimensionalizing
         Tmax_nd = (abs(E_start_d - E_reverse_d) / v * 2)/ T_0
         
-        m = 2**12
+        m = 20000
 
         k0 = k0_d * T_0 #no units
         kcat_for = kcat_forward_d * Gamma * T_0 #no units
@@ -86,10 +86,10 @@ class CatalyticModel:
         sc_Red = pybamm.Variable("R(surf) [non-dim]")
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
-        i = pybamm.Variable("Current [non-dim]")
+        # i = pybamm.Variable("Current [non-dim]")
 
         # Effective potential
-        Eeff = Eapp - i * Ru #no units
+        Eeff = Eapp #- i * Ru no units
 
         #"left" indicates environment directly on electrode surface; x = 0
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
@@ -114,7 +114,7 @@ class CatalyticModel:
         model.rhs = {
             sc_Ox: i_f + cat_con, #i_f is the echem contribution, cat_con is chemical contribution
             sc_Red: -i_f - cat_con,
-            i: (di_f + Cdl) * Eapp.diff(pybamm.t),
+            # i: (-di_f + Cdl) * Eapp.diff(pybamm.t),
             c_s: d_S * pybamm.div(pybamm.grad(c_s)),
             c_p: d_P * pybamm.div(pybamm.grad(c_p)),
         }
@@ -135,7 +135,7 @@ class CatalyticModel:
         model.initial_conditions = {
             sc_Ox: pybamm.Scalar(1),
             sc_Red: pybamm.Scalar(0),
-            i: Cdl * Eapp.diff(pybamm.t), #again, capacitive current (if it's 0, starting i is 0)
+            # i: Cdl * Eapp.diff(pybamm.t), #again, capacitive current (if it's 0, starting i is 0)
             c_s: d_S * (cs_nd),
             c_p: d_P * (cp_nd),
         }
@@ -169,7 +169,7 @@ class CatalyticModel:
 
         # model variables
         model.variables = {
-            "Current [non-dim]": i,
+            # "Current [non-dim]": i,
             "Applied Voltage [non-dim]": Eapp,
             "O(surf) [non-dim]": sc_Ox,
             "R(surf) [non-dim]": sc_Red,
@@ -227,7 +227,7 @@ class CatalyticModel:
             print(e)
             solution = np.zeros_like(times_nd)
         return (
-            solution["Current [non-dim]"](times_nd),
+            # solution["Current [non-dim]"](times_nd),
             solution["Applied Voltage [non-dim]"](times_nd),
             solution["O(surf) [non-dim]"](times_nd),
             solution["R(surf) [non-dim]"](times_nd),

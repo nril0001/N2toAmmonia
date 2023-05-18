@@ -11,32 +11,32 @@ def main(const_parameters,input_parameters):
     #setting main model to reference CatalyticModel class
     cmodel = cm.CatalyticModel(const_parameters,seioptions)
     #setting solved answers to ones usable here
-    current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
+    E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
     ##redimensionalizing here for now. Messy to do in main, move later
-    I_d = current * cmodel._I_0
+    # I_d = current * cmodel._I_0
     E_d = E_nd * cmodel._E_0
     print(k0[0])
     
     #QUICK PLOTS, IMPROVE# 
-    plt.cla()
-    plt.plot(E_d, I_d)
-    plt.xlabel("Eapp [V]")
-    plt.ylabel("current [A]")
-    plt.savefig("output/CatModel03/CurrentvsEappdim_cat03.png")
-    # np.savetxt("output/cu rent_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, I_d))))
+    # plt.cla()
+    # plt.plot(E_d, I_d)
+    # plt.xlabel("Eapp [V]")
+    # plt.ylabel("current [A]")
+    # plt.savefig("output/CatModel03/CurrentvsEappdim_cat03.png")
+    # np.savetxt("output/CatModel03/current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, I_d))))
 
-    plt.cla()
-    plt.plot(E_nd, current)
-    plt.xlabel("Eapp [non-dim]")
-    plt.ylabel("current [non-dim]")
-    plt.savefig("output/CatModel03/currentvsEapp_cat01.png")
-    # np.savetxt("output/current_nondim_pybamm_kf_1.dat", np.transpose(np.vstack((E_nd, current))))
+    # plt.cla()
+    # plt.plot(E_nd, current)
+    # plt.xlabel("Eapp [non-dim]")
+    # plt.ylabel("current [non-dim]")
+    # plt.savefig("output/CatModel03/currentvsEapp_cat01.png")
+    # # np.savetxt("output/current_nondim_pybamm_kf_1.dat", np.transpose(np.vstack((E_nd, current))))
 
-    plt.cla()
-    plt.plot(T_nd, current)
-    plt.xlabel("time [non-dim]")
-    plt.ylabel("current [non-dim]")
-    plt.savefig("output/CatModel03/currentvstime_cat03.png")
+    # plt.cla()
+    # plt.plot(T_nd, current)
+    # plt.xlabel("time [non-dim]")
+    # plt.ylabel("current [non-dim]")
+    # plt.savefig("output/CatModel03/currentvstime_cat03.png")
     
     plt.cla()
     plt.plot(T_nd, E_nd)
@@ -69,7 +69,7 @@ if __name__ =='__main__':
         "Diffusion Coefficient of S [cm2 s-1]": 1e-5,
         "Diffusion Coefficient of P [cm2 s-1]": 1e-5,
         "Electrode Area [cm2]": 1,
-        "Temperature [K]": 298,
+        "Temperature [K]": 298.2,
         "Voltage start [V]": 0.5,
         "Voltage reverse [V]": -0.5,
         "Voltage amplitude [V]": 0.0,
@@ -80,9 +80,9 @@ if __name__ =='__main__':
     #conditions that will change often over the course of testing
     input_parameters = {
         "Reversible Potential [V]": 0.0,
-        "Redox Rate [s-1]": 10000,
-        "Catalytic Rate For [cm2 mol-l s-1]": 1e-3,
-        "Catalytic Rate Back [cm2 mol-l s-1]": 1e-3,
+        "Redox Rate [s-1]": 1.5,
+        "Catalytic Rate For [cm2 mol-l s-1]": 0,
+        "Catalytic Rate Back [cm2 mol-l s-1]": 0,
         "Symmetry factor [non-dim]": 0.5,
         #28 Mar 2023: not fully implemented
         "Capacitance [F]": 0, #1e-8,
