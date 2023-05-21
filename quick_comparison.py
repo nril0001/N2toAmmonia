@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel03 as cm
+import catalyticmodel04 as cm
 import numpy as np
 import time
 import matplotlib.pylab as plt
@@ -8,7 +8,7 @@ import matplotlib.pylab as plt
 def main(const_parameters,input_parameters):
     #list of options to pass into the model
     seioptions = ()
-    files = [['digielchcomp/surfaceonly/CV_k0_1.5.txt',1.5, 'digielchcomp/surfaceonly/SC_k0_1.5.txt'], 
+    files = [['digielchcomp/surfaceonly/CV_k0_1.5.txt',2, 'digielchcomp/surfaceonly/SC_k0_1.5.txt'], 
              ['digielchcomp/surfaceonly/CV_k0_10.txt', 10, 'digielchcomp/surfaceonly/SC_k0_10.txt'],
              ['digielchcomp/surfaceonly/CV_k0_500.txt', 500, 'digielchcomp/surfaceonly/SC_k0_500.txt'], 
              ['digielchcomp/surfaceonly/CV_k0_1000.txt', 1e5, 'digielchcomp/surfaceonly/SC_k0_1000.txt'],
@@ -54,7 +54,7 @@ def main(const_parameters,input_parameters):
         #setting solved answers to ones usable here
         current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
         ##redimensionalizing here for now. Messy to do in main, move later
-        I_d = current * cmodel._I_0
+        I_d = current * cmodel._I_0 * 2.52e2
         E_d = E_nd * cmodel._E_0
 
         offset_E = []

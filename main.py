@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel03 as cm
+import catalyticmodel04 as cm
 import numpy as np
 import time
 import matplotlib.pylab as plt
@@ -13,7 +13,7 @@ def main(const_parameters,input_parameters):
     #setting solved answers to ones usable here
     current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
     ##redimensionalizing here for now. Messy to do in main, move later
-    I_d = current * cmodel._I_0
+    I_d = current * cmodel._I_0 * 2.52e2
     E_d = E_nd * cmodel._E_0
     print(k0[0])
     
@@ -79,7 +79,7 @@ if __name__ =='__main__':
     #conditions that will change often over the course of testing
     input_parameters = {
         "Reversible Potential [V]": 0.0,
-        "Redox Rate [s-1]": 10000,
+        "Redox Rate [s-1]": 100000,
         "Catalytic Rate For [cm2 mol-l s-1]": 1e-3,
         "Catalytic Rate Back [cm2 mol-l s-1]": 1e-3,
         "Symmetry factor [non-dim]": 0.5,

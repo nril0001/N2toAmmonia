@@ -225,10 +225,20 @@ class CatalyticModel:
         print(f"Number of timesteps: " + str(self._m))
         try:
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
+            c_O = solution["O(surf) [non-dim]"](times_nd)
+            current = []
+            current.append(0)
+            for v in range(1, self._m):
+                current.append(c_O[v]-c_O[v-1])
+                
+            current = np.array(current)
+            
+            
         except pybamm.SolverError as e:
             print(e)
             solution = np.zeros_like(times_nd)
         return (
+            current,
             solution["Applied Voltage [non-dim]"](times_nd),
             solution["O(surf) [non-dim]"](times_nd),
             solution["R(surf) [non-dim]"](times_nd),
