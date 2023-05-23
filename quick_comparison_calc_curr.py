@@ -8,12 +8,12 @@ import matplotlib.pylab as plt
 def main(const_parameters,input_parameters):
     #list of options to pass into the model
     seioptions = ()
-    files = [#['digielchcomp/surfaceonly/CV_k0_1.5.txt',2, 'digielchcomp/surfaceonly/SC_k0_1.5.txt'], 
+    files = [#['digielchcomp/surfaceonly/CV_k0_1.5.txt',1.5, 'digielchcomp/surfaceonly/SC_k0_1.5.txt'], 
              ['digielchcomp/surfaceonly/CV_k0_10.txt', 10, 'digielchcomp/surfaceonly/SC_k0_10.txt'],
-             ['digielchcomp/surfaceonly/CV_k0_500.txt', 500, 'digielchcomp/surfaceonly/SC_k0_500.txt'],] 
-             #['digielchcomp/surfaceonly/CV_k0_1000.txt', 1e5, 'digielchcomp/surfaceonly/SC_k0_1000.txt'],
-             #['digielchcomp/surfaceonly/CV_k0_1e7.txt', 1e7, 'digielchcomp/surfaceonly/SC_k0_1e7.txt'], 
-             #['digielchcomp/surfaceonly/CV_k0_1e9.txt', 1e9, 'digielchcomp/surfaceonly/SC_k0_1e9.txt'],]
+             ['digielchcomp/surfaceonly/CV_k0_500.txt', 500, 'digielchcomp/surfaceonly/SC_k0_500.txt'], 
+             ['digielchcomp/surfaceonly/CV_k0_1000.txt', 1e5, 'digielchcomp/surfaceonly/SC_k0_1000.txt'],
+             ['digielchcomp/surfaceonly/CV_k0_1e7.txt', 1e7, 'digielchcomp/surfaceonly/SC_k0_1e7.txt'], 
+             ['digielchcomp/surfaceonly/CV_k0_1e9.txt', 1e9, 'digielchcomp/surfaceonly/SC_k0_1e9.txt'],]
     
     
     for i in files:
@@ -52,18 +52,18 @@ def main(const_parameters,input_parameters):
         #setting main model to reference CatalyticModel class
         cmodel = cm.CatalyticModel(const_parameters,seioptions)
         #setting solved answers to ones usable here
-        E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
+        I_nd, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
         ##redimensionalizing here for now. Messy to do in main, move later
         E_d = E_nd * cmodel._E_0
         
-        current = []
-        current.append(0)
-        for v in range(1, len(O_nd)):
-            current.append(O_nd[v]-O_nd[v-1])
+        # current = []
+        # current.append(0)
+        # for v in range(1, len(O_nd)):
+        #     current.append((O_nd[v]-O_nd[v-1])/cmodel._deltaT_nd)
             
-        current = np.array(current)
+        # current = np.array(current)
             
-        I_d = current * cmodel._I_0 * 2.52e2
+        I_d = I_nd * cmodel._I_0
 
         offset_E = []
         maxx = E_d[np.where(I_d==max(I_d))[0][0]]

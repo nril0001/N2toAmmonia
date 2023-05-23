@@ -53,8 +53,10 @@ class CatalyticModel:
         
         #creating time scale and non-dimensionalizing
         Tmax_nd = (abs(E_start_d - E_reverse_d) / v * 2)/ T_0
-        
+        #number of time steps
         m = 20000
+        #length of time step, nondimensional
+        deltaT_nd = Tmax_nd / m
 
         k0 = k0_d * T_0 #no units
         kcat_for = kcat_forward_d * Gamma * T_0 #no units
@@ -209,6 +211,7 @@ class CatalyticModel:
         self._T_0 = param.process_symbol(T_0).evaluate()
         self._CS_d = param.process_symbol(CS_d).evaluate()
         self._CP_d = param.process_symbol(CP_d).evaluate()
+        self._deltaT_nd = param.process_symbol(deltaT_nd).evaluate()
 
         # store time scale related things
         self._Tmax_nd = param.process_symbol(Tmax_nd).evaluate()
@@ -229,7 +232,7 @@ class CatalyticModel:
             current = []
             current.append(0)
             for v in range(1, self._m):
-                current.append(c_O[v]-c_O[v-1])
+                current.append((c_O[v]-c_O[v-1])/self._deltaT_nd)
                 
             current = np.array(current)
             
