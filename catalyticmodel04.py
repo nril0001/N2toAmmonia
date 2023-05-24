@@ -57,13 +57,13 @@ class CatalyticModel:
         m = 20000
         #length of time step, nondimensional
         deltaT_nd = Tmax_nd / m
-
+        #kinetic constants
         k0 = k0_d * T_0 #no units
         kcat_for = kcat_forward_d * Gamma * T_0 #no units
         kcat_back = kcat_backward_d * Gamma * T_0 #no units
         #Diffusion coefficients
-        d_S = DS_d/DS_d #no units
-        d_P = DP_d/DS_d #no units
+        d_S = DS_d/DS_d
+        d_P = DP_d/DS_d
         #Concentrations
         cs_nd = CS_d/CS_d
         cp_nd = CP_d/CS_d
@@ -85,7 +85,7 @@ class CatalyticModel:
         # Create state variables for model
         #sc is surface concentration
         sc_Ox = pybamm.Variable("O(surf) [non-dim]")
-        sc_Red = pybamm.Variable("R(surf) .[non-dim]")
+        sc_Red = pybamm.Variable("R(surf) [non-dim]")
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
         #i = pybamm.Variable("Current [non-dim]")
@@ -105,7 +105,7 @@ class CatalyticModel:
         c_at_electrode_p = pybamm.BoundaryValue(c_p, "left")
         
         #catalytic rate contribution (this was previoulsly written as catalytic current)
-        cat_f = kcat_for*cs_nd*sc_Red
+        cat_f = kcat_for * cs_nd * sc_Red
         cat_con = kcat_for * c_at_electrode_s * (sc_Red) - kcat_back * c_at_electrode_p * (sc_Ox)
 
         # PDEs - left hand side is assumed to be time derivative of the PDE
@@ -233,11 +233,8 @@ class CatalyticModel:
             current = []
             current.append(0)
             for v in range(1, self._m):
-                current.append((c_O[v]-c_O[v-1])/self._deltaT_nd)
-                
+                current.append((c_O[v]-c_O[v-1])/self._deltaT_nd)    
             current = np.array(current)
-            
-            
         except pybamm.SolverError as e:
             print(e)
             solution = np.zeros_like(times_nd)
