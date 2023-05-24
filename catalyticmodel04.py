@@ -105,12 +105,13 @@ class CatalyticModel:
         c_at_electrode_p = pybamm.BoundaryValue(c_p, "left")
         
         #catalytic rate contribution (this was previoulsly written as catalytic current)
+        cat_f = kcat_for*cs_nd*sc_Red
         cat_con = kcat_for * c_at_electrode_s * (sc_Red) - kcat_back * c_at_electrode_p * (sc_Ox)
 
         # PDEs - left hand side is assumed to be time derivative of the PDE
         model.rhs = {
-            sc_Ox: i_f, #i_f is the echem contribution, cat_con is chemical contribution
-            sc_Red: -i_f,
+            sc_Ox: i_f + cat_f, #i_f is the echem contribution, cat_con is chemical contribution
+            sc_Red: -i_f - cat_f,
             c_s: d_S * pybamm.div(pybamm.grad(c_s)),
             c_p: d_P * pybamm.div(pybamm.grad(c_p)),
         }
@@ -217,7 +218,7 @@ class CatalyticModel:
         self._Tmax_nd = param.process_symbol(Tmax_nd).evaluate()
         self._m = m
         
-        print("Catalytic Model 03 initialized successfully.")
+        print("Catalytic Model 04 initialized successfully.")
 
     def simulate(self, parameters):
         #####DEBUGGING#####
