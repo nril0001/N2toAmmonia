@@ -1,68 +1,26 @@
 ## Main function
 import catalyticmodel04 as cm
-import numpy as np
 import time
 import matplotlib.pylab as plt
+import os
+from datetime import date
 
 
-def main(const_parameters,input_parameters):
+def main():
     #list of options to pass into the model
     seioptions = ()
-    #setting main model to reference CatalyticModel class
-    cmodel = cm.CatalyticModel(const_parameters,seioptions)
-    #setting solved answers to ones usable here
-    current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
-    # simulating analytical solution
-    #I_ana_nd = aa.simulate(E_nd)
-    ##redimensionalizing here for now. Messy to do in main, move later
-    I_d = current * cmodel._I_0
-    E_d = E_nd * cmodel._E_0
-
-    #I_ana_d = I_ana_nd *cmodel._I_0
-    print(k0[0])
     
-    #QUICK PLOTS, IMPROVE# 
-    plt.cla()
-    plt.plot(E_d, I_d)
-    plt.xlabel("Eapp [V]")
-    plt.ylabel("current [A]")
-    plt.savefig("output/CurrentvsEappdim_cat04_vs_temp.png")
-    # np.savetxt("output/cu rent_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, I_d))))
-
-    plt.cla()
-    plt.plot(E_nd, current)
-    plt.xlabel("Eapp [non-dim]")
-    plt.ylabel("current [non-dim]")
-    plt.savefig("output/currentvsEapp_cat04_vs_temp.png")
-    # np.savetxt("output/current_nondim_pybamm_kf_1.dat", np.transpose(np.vstack((E_nd, current))))
-
-    # plt.cla()
-    # plt.plot(T_nd, current)
-    # plt.xlabel("time [non-dim]")
-    # plt.ylabel("current [non-dim]")
-    # plt.savefig("output/currentvstime_cat03.png")
+    #retrieve date
+    today = date.today()
+    folder = today.strftime("%Y%m%d")
     
-    # plt.cla()
-    # plt.plot(T_nd, E_nd)
-    # plt.xlabel("time [non-dim]")
-    # plt.ylabel("Eapp [non-dim]")
-    # plt.savefig("output/Eappvstime_cat03.png")
+    #folder pathway - needs to be set to read all txt files that want analysed
+    #use same naming conventions for text files as files in GammaTemp Variation
+    output = "output/"+folder+"/"
     
-    # plt.cla()
-    # plt.plot(T_nd, cat_conc, label="Cat_conc")
-    # plt.plot(T_nd, i_f, label="i_f")
-    # plt.xlabel("time [non-dim]")
-    # plt.ylabel("rates [non-dim]")
-    # plt.legend()
-    # plt.savefig("output/ratesvstime_cat03.png")
-    # np.savetxt("output/ratesvstime_cat01.dat", np.transpose(np.vstack((T_nd, O_nd, R_nd))))
-    
-    return
-
-if __name__ =='__main__':
-    #Timer to measure performance
-    ti = time.time()
-
+    if os.path.isdir(output) == 0:
+        os.mkdir(output, 0o666)
+        
     #constants that can vary, but generally won't change expt to expt
     const_parameters = {
         "Faraday Constant [C mol-1]": 96485.3328959,
@@ -91,8 +49,63 @@ if __name__ =='__main__':
         "Capacitance [F]": 0, #1e-8,
         "Uncompensated Resistance [Ohm]": 0.0
     }
+    
+    #setting main model to reference CatalyticModel class
+    cmodel = cm.CatalyticModel(const_parameters,seioptions)
+    #setting solved answers to ones usable here
+    current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
+    # simulating analytical solution
+    #I_ana_nd = aa.simulate(E_nd)
+    ##redimensionalizing here for now. Messy to do in main, move later
+    I_d = current * cmodel._I_0
+    E_d = E_nd * cmodel._E_0
 
-    main(const_parameters,input_parameters)
+    #I_ana_d = I_ana_nd *cmodel._I_0
+    print(k0[0])
+    
+    #QUICK PLOTS, IMPROVE# 
+    plt.cla()
+    plt.plot(E_d, I_d)
+    plt.xlabel("Eapp [V]")
+    plt.ylabel("current [A]")
+    plt.savefig(output+"CV_cat04_dim.png")
+    # np.savetxt(output+"cu rent_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, I_d))))
+
+    plt.cla()
+    plt.plot(E_nd, current)
+    plt.xlabel("Eapp [non-dim]")
+    plt.ylabel("current [non-dim]")
+    plt.savefig(output+"CV_cat04_nondim.png")
+    # np.savetxt(output+"CV_cat04_nondim.dat", np.transpose(np.vstack((E_nd, current))))
+
+    # plt.cla()
+    # plt.plot(T_nd, current)
+    # plt.xlabel("time [non-dim]")
+    # plt.ylabel("current [non-dim]")
+    # plt.savefig(output+"Curr_vs_Time_cat04_nondim.png")
+    
+    # plt.cla()
+    # plt.plot(T_nd, E_nd)
+    # plt.xlabel("time [non-dim]")
+    # plt.ylabel("Eapp [non-dim]")
+    # plt.savefig(output+"Eappvstime_cat04_nondim.png")
+    
+    # plt.cla()
+    # plt.plot(T_nd, cat_conc, label="Cat_conc")
+    # plt.plot(T_nd, i_f, label="i_f")
+    # plt.xlabel("time [non-dim]")
+    # plt.ylabel("rates [non-dim]")
+    # plt.legend()
+    # plt.savefig(output+"ratesvstime_cat04.png")
+    # np.savetxt(output+"ratesvstime_cat04.dat", np.transpose(np.vstack((T_nd, O_nd, R_nd))))
+    
+    return
+
+if __name__ =='__main__':
+    #Timer to measure performance
+    ti = time.time()
+
+    main()
     
 
     #literally just to test that that main is working properly (delete later)

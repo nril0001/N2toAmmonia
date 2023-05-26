@@ -1,13 +1,20 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed May 24 10:55:34 2023
+
+@author: Nathan
+"""
+
 ## Main function
 import catalyticmodel04 as cm
 import numpy as np
 import time
 import matplotlib.pylab as plt
 import os
+import re
 from datetime import date
 
-
-def main(const_parameters,input_parameters):
+def main():
     #list of options to pass into the model
     seioptions = ()
     
@@ -17,21 +24,29 @@ def main(const_parameters,input_parameters):
     
     #folder pathway - needs to be set to read all txt files that want analysed
     #use same naming conventions for text files as files in GammaTemp Variation
+    pathway = "DigiElech/surfaceonly/GammaTemp Variation/"
     output = "output/"+folder+"/"
     
     if os.path.isdir(output) == 0:
         os.mkdir(output, 0o666)
+
+    #list to store files
+    files = []
     
-    files = [['digielchcomp/surfaceonly/CV_k0_1.5.txt',2, 'digielchcomp/surfaceonly/SC_k0_1.5.txt'], 
-             ['digielchcomp/surfaceonly/CV_k0_10.txt', 10, 'digielchcomp/surfaceonly/SC_k0_10.txt'],
-             ['digielchcomp/surfaceonly/CV_k0_500.txt', 500, 'digielchcomp/surfaceonly/SC_k0_500.txt'], 
-             ['digielchcomp/surfaceonly/CV_k0_1000.txt', 1e5, 'digielchcomp/surfaceonly/SC_k0_1000.txt'],
-             ['digielchcomp/surfaceonly/CV_k0_1e7.txt', 1e7, 'digielchcomp/surfaceonly/SC_k0_1e7.txt'], 
-             ['digielchcomp/surfaceonly/CV_k0_1e9.txt', 1e9, 'digielchcomp/surfaceonly/SC_k0_1e9.txt'],]
+    #Iterate directory
+    for path in os.listdir(pathway):
+        #check if current path is a file
+        if os.path.isfile(os.path.join(pathway, path)):
+            files.append([pathway+path])
     
+    #retrieve variables from file pathway
+    for t in files:
+        variables = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", t[0])
+        for l in range(len(variables)):
+            variables[l] = float(variables[l])
+            t.append(variables[l])  
     
     for i in files:
-        #constants that can vary, but generally won't change expt to expt
         const_parameters = {
             "Faraday Constant [C mol-1]": 96485.3328959,
             "Gas constant [J K-1 mol-1]": 8.314459848,
@@ -40,18 +55,18 @@ def main(const_parameters,input_parameters):
             "Diffusion Coefficient of S [cm2 s-1]": 1e-5,
             "Diffusion Coefficient of P [cm2 s-1]": 1e-5,
             "Electrode Area [cm2]": 1,
-            "Temperature [K]": 298.2,
+            "Temperature [K]": i[1],
             "Voltage start [V]": 0.5,
             "Voltage reverse [V]": -0.5,
             "Voltage amplitude [V]": 0.0,
             "Scan Rate [V s-1]": 0.05,
-            "Electrode Coverage [mol cm-2]": 1e-12,
+            "Electrode Coverage [mol cm-2]": i[2],
         }
-
-        #conditions that will change often over the course of testing     
+        
+        
         input_parameters = {
             "Reversible Potential [V]": 0.0,
-            "Redox Rate [s-1]": i[1],
+            "Redox Rate [s-1]": 1000,
             "Catalytic Rate For [cm2 mol-l s-1]": 0,
             "Catalytic Rate Back [cm2 mol-l s-1]": 0,
             "Symmetry factor [non-dim]": 0.5,
@@ -62,23 +77,28 @@ def main(const_parameters,input_parameters):
         voltage = []
         curr = []
         row = []
-         
+        count = 0
         f = open(i[0],'r')
         for row in f:
-            row = row.split("\t")
-            voltage.append(float(row[0]))
-            curr.append(float(row[1]))
+            count += 1
+            if count < 3:
+                continue
+            else:
+                row = row.split("\t")
+                voltage.append(float(row[0]))
+                curr.append(float(row[1]))
 
         #flipping current values from DigiElech
         curr = np.array(curr) * (-1)
         
-        potential = []
-        surf_cov = []
-        f = open(i[2],'r')
-        for row in f:
-            row = row.split("\t")
-            potential.append(float(row[0]))
-            surf_cov.append(float(row[1])/100)
+        #digielch surface concentration profiles
+        # potential = []
+        # surf_cov = []
+        # f = open(i[0],'r')
+        # for row in f[2:]:
+        #     row = row.split("\t")
+        #     potential.append(float(row[0]))
+        #     surf_cov.append(float(row[1])/100)
         
         
         #setting main model to reference CatalyticModel class
@@ -87,6 +107,8 @@ def main(const_parameters,input_parameters):
         current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
         ##redimensionalizing here for now. Messy to do in main, move later
         I_d = current * cmodel._I_0
+        print(cmodel._I_0)
+        #I_0 = (F * a * Gamma * v) / ((R * T)/F)  #units are A
         E_d = E_nd * cmodel._E_0
 
         offset_E = []
@@ -98,6 +120,7 @@ def main(const_parameters,input_parameters):
             offset_E.append(E_d[l] + minn)
             
         k00 = str(i[1])
+        k01 = str(i[2])
     
         #QUICK PLOTS# 
         plt.cla()
@@ -108,50 +131,51 @@ def main(const_parameters,input_parameters):
         plt.ylabel("current [A]")
         plt.grid()
         plt.legend()
-        plt.savefig(output+"CV_cat04_dim_k0_"+k00+".png", dpi=600)
-        np.savetxt(output+"CV_cat04_dim_k0_"+k00+".dat", np.transpose(np.vstack((E_d, I_d))))
+        plt.savefig(output+"CV_dim_"+k00+"K_G_"+k01+".png", dpi=1200)
+        #np.savetxt(output+"CV_dim_"+k00+"K_G_"+k01+".dat", np.transpose(np.vstack((E_d, I_d))))
         
-        plt.cla()
-        plt.plot(offset_E[:10001], (I_d[:10001]), color = "red", label = "Pybamm Maxmium peak (Oxidation)")
-        plt.plot(offset_E[10001:], (I_d[10001:]), color = "orange", label = "Pybamm Minimum peak (Reduction)")
-        plt.plot(voltage, curr, color = 'g', label = 'Digielch')
-        plt.title("Offset Voltammogram k0: " + k00)
-        plt.xlabel("Eapp [V]")
-        plt.ylabel("current [A]")
-        plt.grid()
-        plt.legend()
-        plt.savefig(output+"CV_cat04_Offset_k0_"+k00+".png", dpi=600)
+        # plt.cla()
+        # plt.plot(offset_E[:10001], (I_d[:10001]), color = "red", label = "Pybamm Maxmium peak (Oxidation)")
+        # plt.plot(offset_E[10001:], (I_d[10001:]), color = "orange", label = "Pybamm Minimum peak (Reduction)")
+        # plt.plot(voltage, curr, color = 'g', label = 'Digielch')
+        # plt.title("Offset Voltammogram k0: " + k00)
+        # plt.xlabel("Eapp [V]")
+        # plt.ylabel("current [A]")
+        # plt.grid()
+        # plt.legend()
+        # plt.savefig(output+"CV_offset_dim_"+k00+"K_G_"+k01+".png", dpi=600)
         
-        plt.cla()
-        plt.plot(offset_E[:10001], abs(I_d[:10001]), color = "red", label = "Maxmium peak (Oxidation)")
-        plt.plot(offset_E[10001:], abs(I_d[10001:]), color = "orange", label = "Minimum peak (Reduction)")
-        plt.title("k0: " + k00)
-        plt.xlabel("Eapp [V]")
-        plt.ylabel("current [A]")
-        plt.grid()
-        plt.legend()
-        plt.savefig(output+"CV_cat04_offset_k0_"+k00+".png", dpi=600)
-        np.savetxt(output+"CV_cat04_offset_k0_"+k00+".dat", np.transpose(np.vstack((E_d, I_d))))
+        # plt.cla()
+        # plt.plot(offset_E[:10001], abs(I_d[:10001]), color = "red", label = "Maxmium peak (Oxidation)")
+        # plt.plot(offset_E[10001:], abs(I_d[10001:]), color = "orange", label = "Minimum peak (Reduction)")
+        # plt.title("k0: " + k00)
+        # plt.xlabel("Eapp [V]")
+        # plt.ylabel("current [A]")
+        # plt.grid()
+        # plt.legend()
+        # plt.savefig(output+"CV_offset_flipped_dim_"+k00+"K_G_"+k01+".png", dpi=600)
+        # np.savetxt(output+"CV_offset_flipped_dim_"+k00+"K_G_"+k01+".dat", np.transpose(np.vstack((E_d, I_d))))
         
-        plt.cla()
-        plt.plot(E_d, O_nd, color = "red", label="PyBamm - Ox")
-        plt.plot(E_d, R_nd, color = "orange", label="PyBamm - Red")
-        plt.plot(potential[:20000], surf_cov[:20000], color = "blue", label="DigiElch - Ox")
-        plt.plot(potential[20000:], surf_cov[20000:], color = "green", label="DigiElch - Red")
-        plt.title("Concentration Profile: " + k00)
-        plt.xlabel("Potential [V]")
-        plt.ylabel("Surface Coverage [non-dim]")
-        plt.legend()
-        plt.grid()
-        plt.savefig(output+"Surf_Cov_cat04_k0_"+k00+".png", dpi=600)
+        # plt.cla()
+        # plt.plot(E_d, O_nd, color = "red", label="PyBamm - Ox")
+        # plt.plot(E_d, R_nd, color = "orange", label="PyBamm - Red")
+        # plt.plot(potential[:20000], surf_cov[:20000], color = "blue", label="DigiElch - Ox")
+        # plt.plot(potential[20000:], surf_cov[20000:], color = "green", label="DigiElch - Red")
+        # plt.title("Concentration Profile: " + k00)
+        # plt.xlabel("Potential [V]")
+        # plt.ylabel("Surface Coverage [non-dim]")
+        # plt.legend()
+        # plt.grid()
+        # plt.savefig(output+"Surf_cov_dim_"+k00+"K_G_"+k01+".png", dpi=600)
     
+
         # plt.cla()
         # plt.plot(E_nd, current)
         # plt.xlabel("Eapp [non-dim]")
         # plt.ylabel("current [non-dim]")
         # plt.grid()
-        # plt.savefig(output+"CV_cat04_nondim_cat01.png", dpi=600)
-        # # np.savetxt(output+"CV_cat04_nondim_pybamm_kf_1.dat", np.transpose(np.vstack((E_nd, current))))
+        # plt.savefig(output+"currentvsEapp_cat01.png", dpi=600)
+        # # np.savetxt(output+"current_nondim_pybamm_kf_1.dat", np.transpose(np.vstack((E_nd, current))))
     
         # plt.cla()
         # plt.plot(T_nd, current)
@@ -166,7 +190,7 @@ def main(const_parameters,input_parameters):
         # plt.ylabel("Eapp [non-dim]")
         # plt.grid()
         # plt.savefig(output+"Eappvstime_cat03.png", dpi=600)
-        
+
         # plt.cla()
         # plt.plot(T_nd, cat_conc, label="Cat_conc")
         # plt.plot(T_nd, i_f, label="i_f")
@@ -176,16 +200,15 @@ def main(const_parameters,input_parameters):
         # plt.grid()
         # plt.savefig(output+"ratesvstime_cat03.png", dpi=600)
         # # np.savetxt(output+"ratesvstime_cat01.dat", np.transpose(np.vstack((T_nd, O_nd, R_nd))))
-        
-        
-        plt.cla()
-        #plt.plot(voltage, curr, color = 'g', label = 'Digielch')
-        plt.plot(E_d, I_d, color = 'b', label = 'Pybamm')
-        #plt.title(title)
-        plt.legend()
-        plt.xlabel("Eapp [V]")
-        plt.ylabel("current [A]")
-        plt.savefig(output+i[0]+".png")
+
+        # plt.cla()
+        # #plt.plot(voltage, curr, color = 'g', label = 'Digielch')
+        # plt.plot(E_d, I_d, color = 'b', label = 'Pybamm')
+        # #plt.title(title)
+        # plt.legend()
+        # plt.xlabel("Eapp [V]")
+        # plt.ylabel("current [A]")
+        # plt.savefig(output+i[0]+".png")
         
     return
 
@@ -195,6 +218,7 @@ if __name__ =='__main__':
 
     main()
     
+
     #literally just to test that that main is working properly (delete later)
     print("complete in time: " + str((time.time()-ti)/60) + " minutes")
 
