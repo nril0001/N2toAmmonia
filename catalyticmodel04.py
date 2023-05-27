@@ -38,7 +38,7 @@ class CatalyticModel:
         Cdl_d = pybamm.InputParameter("Capacitance [F]")
         Ru_d = pybamm.InputParameter("Uncompensated Resistance [Ohm]")
 
-        # Create scaling factors for non-dimensionalisation
+        # Create scaling factors   for non-dimensionalisation
         E_0 = (R * T) / F #units are V
         T_0 = E_0 / v #units are seconds
         X_0 = pybamm.sqrt((F * v) / (R * T * DS_d)) #units are cm
@@ -59,7 +59,8 @@ class CatalyticModel:
         deltaT_nd = Tmax_nd / m
         #kinetic constants
         k0 = k0_d * T_0 #no units
-        kcat_for = kcat_forward_d * Gamma * T_0 #no units
+        #kcat_for = kcat_forward_d * Gamma * T_0 #no units
+        kcat_for = kcat_forward_d * CS_d * T_0 
         kcat_back = kcat_backward_d * Gamma * T_0 #no units
         #Diffusion coefficients
         d_S = DS_d/DS_d
