@@ -52,7 +52,7 @@ class CatalyticModel:
         t_reverse = E_start - E_reverse
         
         #creating time scale and non-dimensionalizing
-        Tmax_nd = (abs(E_start_d - E_reverse_d) / v * 2)/ T_0
+        Tmax_nd = ((abs(E_start_d - E_reverse_d) / v * 2)/ T_0)/2
         #number of time steps
         m = 20000
         #length of time step, nondimensional
@@ -174,6 +174,8 @@ class CatalyticModel:
             "Cat_conc": cat_con,
             "i_f": i_f,
             "k0": k0_d,
+            "kf": kcat_for,
+            "i": sc_Ox - sc_Ox[-2],
         }
         
         # Set model parameters
@@ -231,10 +233,12 @@ class CatalyticModel:
         try:
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
             c_O = solution["O(surf) [non-dim]"](times_nd)
+            c_R = solution["R(surf) [non-dim]"](times_nd)
+            kf = solution["kf"](times_nd[1])
             current = []
             current.append(0)
             for v in range(1, self._m):
-                current.append((c_O[v]-c_O[v-1])/self._deltaT_nd)    
+                current.append(((c_O[v]-c_O[v-1])/self._deltaT_nd) - (kf*c_R[v]) + (kb*c_O[v]))    
             current = np.array(current)
         except pybamm.SolverError as e:
             print(e)

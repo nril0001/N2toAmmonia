@@ -1,5 +1,6 @@
 ## Main function
 import catalyticmodel04 as cm
+import analytical_addon as aa
 import numpy as np
 import time
 import matplotlib.pylab as plt

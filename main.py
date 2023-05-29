@@ -1,5 +1,6 @@
 ## Main function
 import catalyticmodel04 as cm
+import Solplotter as aa
 import time
 import matplotlib.pylab as plt
 import os
@@ -25,7 +26,7 @@ def main():
     const_parameters = {
         "Faraday Constant [C mol-1]": 96485.3328959,
         "Gas constant [J K-1 mol-1]": 8.314459848,
-        "Far-field concentration of S(soln) [mol cm-3]": 1e-2,
+        "Far-field concentration of S(soln) [mol cm-3]": 1,
         "Far-field concentration of P(soln) [mol cm-3]": 0e-6,
         "Diffusion Coefficient of S [cm2 s-1]": 1e-5,
         "Diffusion Coefficient of P [cm2 s-1]": 1e-5,
@@ -41,9 +42,9 @@ def main():
     #conditions that will change often over the course of testing
     input_parameters = {
         "Reversible Potential [V]": 0.0,
-        "Redox Rate [s-1]": 1e5,
-        "Catalytic Rate For [cm2 mol-l s-1]": 1e4,
-        "Catalytic Rate Back [cm2 mol-l s-1]": 1e-3,
+        "Redox Rate [s-1]": 10000,
+        "Catalytic Rate For [cm2 mol-l s-1]": 100,
+        "Catalytic Rate Back [cm2 mol-l s-1]": 0,
         "Symmetry factor [non-dim]": 0.5,
         #28 Mar 2023: not fully implemented
         "Capacitance [F]": 0, #1e-8,
@@ -52,10 +53,11 @@ def main():
     
     #setting main model to reference CatalyticModel class
     cmodel = cm.CatalyticModel(const_parameters,seioptions)
+    e, c = aa.AnalyticalModel(100)
     #setting solved answers to ones usable here
     current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
     # simulating analytical solution
-    #I_ana_nd = aa.simulate(E_nd)
+    #I_ana_nd = amodel.simulate(E_nd)
     ##redimensionalizing here for now. Messy to do in main, move later
     I_d = current * cmodel._I_0
     E_d = E_nd * cmodel._E_0
@@ -68,15 +70,17 @@ def main():
     plt.plot(E_d, I_d)
     plt.xlabel("Eapp [V]")
     plt.ylabel("current [A]")
-    plt.savefig(output+"CV_cat04_dim.png")
-    # np.savetxt(output+"cu rent_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, I_d))))
+    #plt.savefig(output+"CV_cat04_dim.png")
+    # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, I_d))))
 
     plt.cla()
-    plt.plot(E_nd, current)
+    plt.plot(E_d, current, color = "red", label = "Pybamm")
+    plt.plot(e, c, color = "blue", label = "Analytical Addition")
     plt.xlabel("Eapp [non-dim]")
     plt.ylabel("current [non-dim]")
-    plt.savefig(output+"CV_cat04_nondim.png")
-    # np.savetxt(output+"CV_cat04_nondim.dat", np.transpose(np.vstack((E_nd, current))))
+    plt.legend()
+    #plt.savefig(output+"CV_cat04_nondim.png")
+    #np.savetxt(output+"CV_cat04_nondim.dat", np.transpose(np.vstack((E_nd, current))))
 
     # plt.cla()
     # plt.plot(T_nd, current)
