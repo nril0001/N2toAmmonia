@@ -12,8 +12,8 @@ class SingleReactionSolution(pints.ForwardModel):
             param = pybamm.ParameterValues({
                 "Faraday Constant [C mol-1]": 96485.3328959,
                 "Gas constant [J K-1 mol-1]": 8.314459848,
-                "Far-field concentration of A [mol cm-3]": 2e-6,
-                "Diffusion Constant [cm2 s-1]": 1e-5,
+                "Far-field concentration of A [mol cm-3]": 1e-6,
+                "Diffusion Constant [cm2 s-1]": 600,
                 "Electrode Area [cm2]": 1,
                 "Temperature [K]": 298.2,
                 "Voltage frequency [rad s-1]": 9.0152,
@@ -34,7 +34,6 @@ class SingleReactionSolution(pints.ForwardModel):
 
         E_start_d = pybamm.Parameter("Voltage start [V]")
         E_reverse_d = pybamm.Parameter("Voltage reverse [V]")
-        #deltaE_d = pybamm.Parameter("Voltage amplitude [V]")
         v = pybamm.Parameter("Scan Rate [V s-1]")
 
         # Create dimensional input parameters
@@ -43,7 +42,6 @@ class SingleReactionSolution(pints.ForwardModel):
         alpha = pybamm.InputParameter("Symmetry factor [non-dim]")
         Cdl = pybamm.InputParameter("Capacitance [non-dim]")
         Ru = pybamm.InputParameter("Uncompensated Resistance [non-dim]")
-        #omega_d = pybamm.InputParameter("Voltage frequency [rad s-1]")
 
 
         E0_d = pybamm.InputParameter("Reversible Potential [V]")
@@ -63,12 +61,19 @@ class SingleReactionSolution(pints.ForwardModel):
         k0 = (k0_d * pybamm.sqrt(S))/D
         Cdl = Cdl_d * S * E_0 / (I_0 * T_0)
         Ru = Ru_d * I_0 / E_0
-        #omega = 2 * np.pi * omega_d * T_0
 
         E_start = E_start_d / E_0
         E_reverse = E_reverse_d / E_0
         t_reverse = E_start - E_reverse
-        #deltaE = deltaE_d / E_0
+        
+        #creating time scale and non-dimensionalizing
+        Tmax_nd = ((abs(E_start_d - E_reverse_d) / v * 2)/ T_0)
+        
+        #number of time steps
+        m = 20000
+        
+        #length of time step, nondimensional
+        deltaT_nd = Tmax_nd / m
 
         # Input voltage protocol
         Edc_forward = -pybamm.t
@@ -76,7 +81,6 @@ class SingleReactionSolution(pints.ForwardModel):
         Eapp = E_start + \
             (pybamm.t <= t_reverse) * Edc_forward + \
             (pybamm.t > t_reverse) * Edc_backwards 
-            #deltaE * pybamm.sin(omega * pybamm.t)
 
         # create PyBaMM model object
         model = pybamm.BaseModel()
@@ -115,7 +119,7 @@ class SingleReactionSolution(pints.ForwardModel):
         }
 
         model.initial_conditions = {
-            theta: pybamm.Scalar(1),
+            theta: pybamm.Scalar(0),
             i: Cdl * (1.0),
         }
 
@@ -143,6 +147,7 @@ class SingleReactionSolution(pints.ForwardModel):
         model.variables = {
             "Current [non-dim]": i,
             "Applied Voltage [non-dim]": Eapp,
+            "theta": theta_at_electrode,
         }
 
         #--------------------------------
@@ -174,7 +179,6 @@ class SingleReactionSolution(pints.ForwardModel):
         self._model = model
         self._solver = solver
         self._fast_solver = None
-        self._omega_d = param["Voltage frequency [rad s-1]"]
 
         self._I_0 = param.process_symbol(I_0).evaluate()
         self._T_0 = param.process_symbol(T_0).evaluate()
@@ -183,6 +187,11 @@ class SingleReactionSolution(pints.ForwardModel):
         self._S = param.process_symbol(S).evaluate()
         self._D = param.process_symbol(D).evaluate()
         self._default_var_points = default_var_pts
+        self._deltaT_nd = param.process_symbol(deltaT_nd).evaluate()
+
+        # store time scale related things
+        self._Tmax_nd = param.process_symbol(Tmax_nd).evaluate()
+        self._m = m
 
     def non_dim(self, x):
         if len(x) > 6:
@@ -224,6 +233,7 @@ class SingleReactionSolution(pints.ForwardModel):
             return (
                 solution["Current [non-dim]"](times),
                 solution["Applied Voltage [non-dim]"](times),
+                solution["theta"](times),
                 #parameters
             )
         except pybamm.SolverError:
@@ -238,58 +248,72 @@ if __name__ == '__main__':
     
 
     #FOR DIGIELCHM comparison
-# =============================================================================
-#     files = [['digielchcomp/current k0 1e-3.txt',24234345325654264564.0], ['digielchcomp/current k0 2e-3.txt', 2],
-#               ['digielchcomp/current k0 5e-3.txt', 5], ['digielchcomp/current k0_0.1.txt', 100],
-#               ['digielchcomp/current k0_0.5.txt', 500], ['digielchcomp/current k0_1.txt', 1000],
-#               ['digielchcomp/current k0_1e-2.txt', 10], ['digielchcomp/current k0_10.txt', 10000],
-#               ['digielchcomp/current k0_100.txt', 100000], ['digielchcomp/current k0_1000.txt', 1000000]]
-#     for i in files:
-# =============================================================================
+#=============================================================================
+    files = [['C:/Users/natha/Desktop/Code/DigiElech/2023-06-06 Solution only/SC/SC_k0_1e-3_Ds_1e-5_Dp_1e-5.txt', 1e-3, 1e-5]]
+    for i in files:
+        print(i)
         
-# =============================================================================
-#         print(i)
-#         
-#         volt = []
-#         curr = []
-#         row = []
-#           
-#         f = open(i[0],'r')
-#         for row in f:
-#             row = row.split("\t")
-#             volt.append(float(row[0]))
-#             curr.append(float(row[1]))
-# =============================================================================
+        volt = []
+        curr = []
+        row = []
+        count = 0 
+        f = open(i[0],'r')
+        for row in f:
+            count += 1
+            row = row.split("\t")
+            print(row)
+            if row[0] == '':
+                continue
+            else:
+                volt.append(float(row[0]))
+                curr.append(float(row[1]))
+#=============================================================================
             
             
         # pybamm.set_logging_level('INFO')
         model = SingleReactionSolution()
         
-        React_Rate = 1
+        React_Rate = 100
         Revers_Potent = 0
         Symm_fact = 0.5
-        Uncomp_resist = 1.0
-        Capacit = 1e-8
+        Uncomp_resist = 0
+        Capacit = 0
         Volt_freq = 0
         x = np.array([React_Rate, Revers_Potent, Symm_fact, Uncomp_resist, Capacit, Volt_freq])
         
         Tmax = abs(0.5 + 0.5)/0.05 * 2
         Tdim = np.linspace(0, Tmax, 2**8)
         TnonDim = (96485.3328959 * 0.05 / (8.314459848*298)) * Tdim
+        Tmax_nd = (96485.3328959 * 0.05 / (8.314459848*298)) * Tmax
+        m = 2**8
+        deltaT_nd = Tmax_nd / m
 
         t0 = time.perf_counter()
-        current, voltage = model.simulate(x, TnonDim)
+        current, voltage, theta = model.simulate(x, TnonDim)
         t1 = time.perf_counter()
+        
+        #faradaic current
+        I_f = []
+        I_f.append(0)
+        
+        for v in range(1, len(theta)):
+            
+            #generate faradaic current
+            dOdt = (theta[v]-theta[v-1])/deltaT_nd
+            I =  dOdt
+            I_f.append(I)
+                
+        current = np.array(I_f)
+        curr = np.array(curr)
                 
         ##redimensionalizing here for now. Messy to do in main, move later
-        I_d = current*model._I_0*1e2
+        I_d = current
         E_d = voltage * model._E_0
         #title = i[0]
-          
         
         plt.cla()
-        #plt.plot(volt, curr, color = 'g', label = 'Digielch')
-        plt.plot(E_d, I_d, color = 'b', label = 'Pybamm')
+        plt.plot(volt, curr/curr[0], color = 'g', label = 'Digielch')
+        plt.plot(E_d, theta, color = 'b', label = 'Pybamm')
         #plt.title(title)
         plt.legend()
         plt.xlabel("Eapp [V]")

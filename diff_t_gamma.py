@@ -74,6 +74,7 @@ def main():
             "Uncompensated Resistance [Ohm]": 0.0
         }
         
+        # read potential and current from digielch files
         voltage = []
         curr = []
         row = []
