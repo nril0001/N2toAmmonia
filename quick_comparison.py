@@ -47,7 +47,7 @@ def main():
             "Faraday Constant [C mol-1]": 96485.3328959,
             "Gas constant [J K-1 mol-1]": 8.314459848,
             "Far-field concentration of S(soln) [mol cm-3]": 1e-6,
-            "Far-field concentration of P(soln) [mol cm-3]": 1e-12,
+            "Far-field concentration of P(soln) [mol cm-3]": 0,
             "Diffusion Coefficient of S [cm2 s-1]": i[6],
             "Diffusion Coefficient of P [cm2 s-1]": i[7],
             "Electrode Area [cm2]": 1,
@@ -70,9 +70,35 @@ def main():
             "Uncompensated Resistance [Ohm]": 0
         }
         
+        #for unpacking DigiElech CVs
+        # voltage = []
+        # curr = []
+        # row = []
+        # count = 0
+        # f = open(i[0],'r')
+        # for row in f:
+        #     count += 1
+        #     if count < 3:
+        #         continue
+        #     else:
+        #         row = row.split("\t")
+        #         voltage.append(float(row[0]))
+        #         curr.append(float(row[1]))
+
+        #flipping current values from DigiElech
+        #curr = np.array(-curr)
         
+        # potential = []
+        # surf_cov = []
+        # f = open(i[2],'r')
+        # for row in f:
+        #     row = row.split("\t")
+        #     potential.append(float(row[0]))
+        #     surf_cov.append(float(row[1])/100)
+
+        #for unpacking DigiElech surface concentrations
         voltage = []
-        curr = []
+        surfcon = []
         row = []
         count = 0
         f = open(i[0],'r')
@@ -83,19 +109,8 @@ def main():
             else:
                 row = row.split("\t")
                 voltage.append(float(row[0]))
-                curr.append(float(row[1]))
+                surfcon.append(float(row[1]))
 
-        #flipping current values from DigiElech
-        curr = np.array(curr)
-        
-        # potential = []
-        # surf_cov = []
-        # f = open(i[2],'r')
-        # for row in f:
-        #     row = row.split("\t")
-        #     potential.append(float(row[0]))
-        #     surf_cov.append(float(row[1])/100)
-        
         #setting main model to reference CatalyticModel class
         cmodel = cm.CatalyticModel(const_parameters,seioptions)
         
@@ -136,13 +151,15 @@ def main():
         # plt.savefig(output+"CV_cat05_dim_ko_"+str(i[5])+"_kf_"+str(i[6])+"_kb_"+str(i[7])+"_Cdl_"+str(i[9])+"_Ru_"+str(i[8])+"_Ds_"+str(i[10])+"_Dp_"+str(i[11])+".png", dpi=600)
         # np.savetxt(output+"CV_cat04_dim_k0_.dat", np.transpose(np.vstack((E_d, S_nd))))
         
+        #normalising the concentrations
+        maxval = np.max(np.append(O_nd,R_nd))
         plt.cla()
-        plt.plot(E_d, O_nd, color = "red", label="PyBamm - P")
-        plt.plot(E_d, R_nd, color = "orange", label="PyBamm - S")
-        plt.plot(voltage[401:], np.array(curr[401:])/curr[0], color = 'purple', label = 'Digielch - S')
-        plt.plot(voltage[:401], np.array(curr[:401])/curr[0], color = 'pink', label = 'Digielch - P')
+        plt.plot(E_d, (O_nd/maxval), color = "red", label="PyBamm - S")
+        plt.plot(E_d, (R_nd/maxval), color = "orange", label="PyBamm - P")
+        plt.plot(voltage[:398], np.array(surfcon[:398])/np.max(surfcon), color = 'blue', linestyle = 'dashdot', label = 'Digielch - S')
+        plt.plot(voltage[399:], np.array(surfcon[399:])/np.max(surfcon), color = 'green', linestyle = 'dashdot', label = 'Digielch - P')
         #plt.plot(E_d, cat, color = "orange", label="PyBamm - Cat")
-        plt.title("Concentration Profile S and P")
+        plt.title("Normalised Concentrations of S and P")
         plt.xlabel("Potential [V]")
         plt.ylabel("Surface Coverage [non-dim]")
         plt.legend()

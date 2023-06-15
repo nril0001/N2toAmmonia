@@ -57,8 +57,9 @@ class CatalyticModel:
         d_P = DP_d/Dmax
         
         #Concentrations
-        cs_nd = (CS_d/CS_d)
-        cp_nd = (CP_d/CS_d)
+        Ctot = CS_d + CP_d
+        cs_nd = (CS_d/Ctot)
+        cp_nd = (CP_d/Ctot)
 
         E_start = E_start_d / E_0
         E_reverse = E_reverse_d / E_0
@@ -93,39 +94,43 @@ class CatalyticModel:
         # Effective potential
         Eeff = Eapp - i * Ru #no units
         
-        # Faradaic current (Butler Volmer)     
-        i_f = pybamm.BoundaryGradient(c_s, "left")
+
+        # defining boundary values for S and P
+        c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
+        c_at_electrode_p = pybamm.BoundaryValue(c_p, "left")
+
+        # Faradaic current (Butler Volmer)
+        #i_f = pybamm.BoundaryGradient(c_s, "left")
+        butler_volmer = k0 * ((c_at_electrode_p) * pybamm.exp((1 - alpha) * (Eeff - E0))
+                            - ((c_at_electrode_s) * pybamm.exp(-alpha * (Eeff - E0))))  
 
         #"left" indicates environment directly on electrode surface; x = 0
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
 
         # PDEs - left hand side is assumed to be time derivative of the PDE
+        #multiplying by the other coefficient...? idk why but it works
         model.rhs = {
-            c_s: d_S * pybamm.div(pybamm.grad(c_s)),
-            c_p: d_P * pybamm.div(pybamm.grad(c_p)),
-            i: (i_f - i),
+            c_s: d_P * pybamm.div(pybamm.grad(c_s)),
+            c_p: d_S * pybamm.div(pybamm.grad(c_p)),
+            i: butler_volmer - i,
         }
         
-        # defining boundary values for S and P
-        c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
-        c_at_electrode_p = pybamm.BoundaryValue(c_p, "left")
-        butler_volmer = (k0*(c_at_electrode_p)*np.e**((1-alpha)*(Eeff-E0))) - (k0*(c_at_electrode_s)*np.e**(-alpha*(Eeff-E0)))
         # Setting boundary and initial conditions
         model.boundary_conditions = {
             c_s: {
-                "right": (pybamm.Scalar(1), "Dirichlet"),
+                "right": (cs_nd, "Dirichlet"),
                 "left": (-butler_volmer, "Neumann"),                    
             },
 
             c_p: {
-                "right": (pybamm.Scalar(0), "Dirichlet"),   #0 makes sense - we'll always be starting with no product
+                "right": (cp_nd, "Dirichlet"),
                 "left": (butler_volmer, "Neumann"),                 
             } 
         }
 
         model.initial_conditions = {
-            c_s: pybamm.Scalar(1),
-            c_p: pybamm.Scalar(0),
+            c_s: cs_nd,
+            c_p: cp_nd,
             i: Cdl * (1.0),
         }
 
@@ -175,21 +180,14 @@ class CatalyticModel:
             geometry, model.submesh_types, model.var_pts)
         disc = pybamm.Discretisation(mesh, model.spatial_methods)
         disc.process_model(model)
-        
-        # Create solver
-        #solver = pybamm.CasadiSolver(mode="fast",
-        #                             rtol=1e-9,
-        #                             atol=1e-9,
-        #                             extra_options_setup={'print_stats': False})
-        #model.convert_to_format = 'jax'
-        #solver = pybamm.JaxSolver(method='BDF')
-        #model.convert_to_format = 'python'
-        #solver = pybamm.ScipySolver(method='BDF')
 
         # Create solver
         model.convert_to_format = 'python'
         solver = pybamm.ScipySolver(method='Radau', rtol=1e-6, atol=1e-6)
-
+        # model.convert_to_format = 'casadi'
+        # solver = pybamm.CasadiSolver(mode='safe', rtol=1e-9, atol=1e-9, root_method='casadi')
+        
+    
         # Store discretised model and solver
         self._model = model
         self._param = param
