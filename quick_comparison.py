@@ -50,6 +50,7 @@ def main():
             "Far-field concentration of P(soln) [mol cm-3]": 0,
             "Diffusion Coefficient of S [cm2 s-1]": i[6],
             "Diffusion Coefficient of P [cm2 s-1]": i[7],
+            #"Largest Diffusion Coefficient [cm2 s-1]": max(i[6],i[7]),
             "Electrode Area [cm2]": 1,
             "Temperature [K]": 298,
             "Voltage start [V]": 0.5,
@@ -113,7 +114,8 @@ def main():
 
         #setting main model to reference CatalyticModel class
         cmodel = cm.CatalyticModel(const_parameters,seioptions)
-        
+        title = i[0].split("/")
+        print(title[3])
         #setting solved answers to ones usable here
         #current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
         current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
@@ -134,8 +136,7 @@ def main():
         k = str(i[3])
         kcatf = str(i[4])
         kcatb = str(i[5])
-        title = i[0].split("/")
-        print(title[3])
+        
         
     
         #QUICK PLOTS# 
@@ -154,10 +155,10 @@ def main():
         #normalising the concentrations
         maxval = np.max(np.append(O_nd,R_nd))
         plt.cla()
-        plt.plot(E_d, (O_nd/maxval), color = "red", label="PyBamm - S")
-        plt.plot(E_d, (R_nd/maxval), color = "orange", label="PyBamm - P")
-        plt.plot(voltage[:398], np.array(surfcon[:398])/np.max(surfcon), color = 'blue', linestyle = 'dashdot', label = 'Digielch - S')
-        plt.plot(voltage[399:], np.array(surfcon[399:])/np.max(surfcon), color = 'green', linestyle = 'dashdot', label = 'Digielch - P')
+        plt.plot(E_d, (O_nd), color = "red", label="PyBamm - S")
+        plt.plot(E_d, (R_nd), color = "orange", label="PyBamm - P")
+        plt.plot(voltage[:398], np.array(surfcon[:398])/surfcon[0], color = 'blue', linestyle = 'dashdot', label = 'Digielch - S')
+        plt.plot(voltage[399:], np.array(surfcon[399:])/surfcon[0], color = 'green', linestyle = 'dashdot', label = 'Digielch - P')
         #plt.plot(E_d, cat, color = "orange", label="PyBamm - Cat")
         plt.title("Normalised Concentrations of S and P")
         plt.xlabel("Potential [V]")

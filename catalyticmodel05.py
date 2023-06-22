@@ -39,10 +39,11 @@ class CatalyticModel:
         Dmax = DS_d + DP_d
         E_0 = (R * T) / F #units are V
         T_0 = E_0 / v #units are seconds
-        X_0 = pybamm.sqrt((F*v)/(R*T*Dmax)) #units are cm
+        X_0 = pybamm.sqrt((F*v)/(R*T*DS_d)) #units are cm
         #I_0 = (DS_d * F * a * CS_d)/ X_0  #units are A
-        I_0 = F*a*CS_d*pybamm.sqrt(Dmax)*pybamm.sqrt((F*v)/(R*T))
-        K_0 = pybamm.sqrt((R*T*Dmax)/(F*v))/DS_d
+        I_0 = F*a*CS_d*pybamm.sqrt(DS_d)*pybamm.sqrt((F*v)/(R*T))
+        K_0 = (pybamm.sqrt(R * T * DS_d/F * v))/DS_d #units are s
+        #K_0 = a / Dmax
         Cdl_0 = (a * E_0)/(I_0 * T_0) # V/A s
         Ru_0 = I_0 / E_0 #units are Amps/V
         
@@ -53,8 +54,9 @@ class CatalyticModel:
         Ru = Ru_d * Ru_0 #no units
         
         #Diffusion coefficients
-        d_S = DS_d/Dmax
-        d_P = DP_d/Dmax
+        d_S = DS_d/DS_d
+        d_P = DP_d/DS_d
+        d_max = pybamm.maximum(d_S, d_P)
         
         #Concentrations
         Ctot = CS_d + CP_d
@@ -108,10 +110,10 @@ class CatalyticModel:
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
 
         # PDEs - left hand side is assumed to be time derivative of the PDE
-        #multiplying by the other coefficient...? idk why but it works
+        #dividing by their own coefficients
         model.rhs = {
-            c_s: d_P * pybamm.div(pybamm.grad(c_s)),
-            c_p: d_S * pybamm.div(pybamm.grad(c_p)),
+            c_s: pybamm.div(pybamm.grad(c_s)) * d_S,
+            c_p: pybamm.div(pybamm.grad(c_p)) * d_P,
             i: butler_volmer - i,
         }
         
@@ -119,12 +121,12 @@ class CatalyticModel:
         model.boundary_conditions = {
             c_s: {
                 "right": (cs_nd, "Dirichlet"),
-                "left": (-butler_volmer, "Neumann"),                    
+                "left": ((-butler_volmer/d_S), "Neumann"),                    
             },
 
             c_p: {
                 "right": (cp_nd, "Dirichlet"),
-                "left": (butler_volmer, "Neumann"),                 
+                "left": ((butler_volmer/d_P), "Neumann"),                 
             } 
         }
 
@@ -136,7 +138,7 @@ class CatalyticModel:
 
         # set spatial variables and domain geometry
         x = pybamm.SpatialVariable('x', domain="solution")
-        x_max = 6*pybamm.sqrt(d_S*Tmax_nd)
+        x_max = 6 * pybamm.sqrt(d_max * Tmax_nd)
         model.geometry = pybamm.Geometry({
             "solution": {
                     x: {
@@ -148,7 +150,7 @@ class CatalyticModel:
 
         # Controls how many space steps are taken (higher number, higher accuracy)
         model.var_pts = {
-            x: 100
+            x: 1000
         }
 
         # Using Finite Volume discretisation on an expanding 1D grid
