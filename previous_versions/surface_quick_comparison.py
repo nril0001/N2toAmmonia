@@ -18,7 +18,7 @@ def main():
 
     #folder pathway - needs to be set to read all txt files that want analysed
     #use same naming conventions for text files as files in GammaTemp Variation
-    pathway = "DigiElech/2023-06-06 Solution only/SC/"
+    pathway = "DigiElech/2023-06-13 Surface only/RC ONLY"
     output = "output/"+folder+"/"
 
     if os.path.isdir(output) == 0:
@@ -173,45 +173,12 @@ def main():
         # np.savetxt(output+"CV_cat04_offset_k0_"+k00+".dat", np.transpose(np.vstack((E_d, I_d))))
     
         # plt.cla()
-        # plt.plot(E_nd, current)
-        # plt.xlabel("Eapp [non-dim]")
-        # plt.ylabel("current [non-dim]")
-        # plt.grid()
-        # plt.savefig(output+"CV_cat04_nondim_cat01.png", dpi=600)
-        # # np.savetxt(output+"CV_cat04_nondim_pybamm_kf_1.dat", np.transpose(np.vstack((E_nd, current))))
-    
-        # plt.cla()
         # plt.plot(T_nd, current)
         # plt.xlabel("time [non-dim]")
         # plt.ylabel("current [non-dim]")
         # plt.grid()
         # plt.savefig(output+"currentvstime_cat03.png", dpi=600)
-        
-        # plt.cla()
-        # plt.plot(T_nd, E_nd)
-        # plt.xlabel("time [non-dim]")
-        # plt.ylabel("Eapp [non-dim]")
-        # plt.grid()
-        # plt.savefig(output+"Eappvstime_cat03.png", dpi=600)
-        
-        # plt.cla()
-        # plt.plot(T_nd, cat_conc, label="Cat_conc")
-        # plt.plot(T_nd, i_f, label="i_f")
-        # plt.xlabel("time [non-dim]")
-        # plt.ylabel("rates [non-dim]")
-        # plt.legend()
-        # plt.grid()
-        # plt.savefig(output+"ratesvstime_cat03.png", dpi=600)
-        # # np.savetxt(output+"ratesvstime_cat01.dat", np.transpose(np.vstack((T_nd, O_nd, R_nd))))
-        
-        # plt.cla()
-        # #plt.plot(voltage, curr, color = 'g', label = 'Digielch')
-        # plt.plot(E_d, I_d, color = 'b', label = 'Pybamm')
-        # #plt.title(title)
-        # plt.legend()
-        # plt.xlabel("Eapp [V]")
-        # plt.ylabel("current [A]")
-        # plt.savefig(output+i[0]+".png")
+    
         
     return
 

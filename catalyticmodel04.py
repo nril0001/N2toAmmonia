@@ -4,7 +4,7 @@ import pybamm
 import numpy as np
 
 class CatalyticModel:
-    def __init__(self,const_parameters,seioptions):
+    def __init__(self,const_parameters,seioptions, atoler, rtoler, t_steps, x_steps):
 
         #Const_parameters are the parameters to be passed into this model via main.py
         param = pybamm.ParameterValues(const_parameters)
@@ -56,7 +56,7 @@ class CatalyticModel:
         #creating time scale and non-dimensionalizing
         Tmax_nd = ((abs(E_start_d - E_reverse_d) / v * 2)/ T_0)
         #number of time steps
-        m = 20000
+        m = t_steps
         #length of time step, nondimensional
         deltaT_nd = Tmax_nd / m
         #kinetic constants
@@ -92,16 +92,13 @@ class CatalyticModel:
         sc_Red = pybamm.Variable("R(surf) [non-dim]")
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
-
-        # Effective potential
-        Eeff = Eapp #no units
+        Eeff = pybamm.Variable("Effective Voltage [non-dim]")
 
         #"left" indicates environment directly on electrode surface; x = 0
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
 
         # Faradaic current (Butler Volmer)     
         i_f = (k0 * (sc_Red) * np.e**((1-alpha) * (Eeff-E0))) - (k0 * (sc_Ox) * np.e**(-alpha * (Eeff-E0)))
-
 
         # defining boundary values for S and P
         c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
@@ -112,6 +109,12 @@ class CatalyticModel:
         cat_b = kcat_back * sc_Ox
         cat = cat_f - cat_b
         cat_con = kcat_for * c_at_electrode_s * (sc_Red) - kcat_back * c_at_electrode_p * (sc_Ox)
+         
+        dOdt = i_f + cat
+        
+        i_cap = Cdl * Eapp.diff(pybamm.t)
+        
+        i = dOdt - cat + i_cap
 
         # PDEs - left hand side is assumed to be time derivative of the PDE
         model.rhs = {
@@ -119,6 +122,11 @@ class CatalyticModel:
             sc_Red: -i_f - cat,
             c_s: d_S * pybamm.div(pybamm.grad(c_s)),
             c_p: d_P * pybamm.div(pybamm.grad(c_p)),
+        }
+        
+        # algebraic equations (none)
+        model.algebraic = {
+            Eeff: Eapp - Ru*i - Eeff,
         }
 
         # Setting boundary and initial conditions
@@ -135,10 +143,11 @@ class CatalyticModel:
         }
 
         model.initial_conditions = {
-            sc_Ox: pybamm.Scalar(1),
+            sc_Ox: sc_Ox_nd,
             sc_Red: pybamm.Scalar(0),
             c_s: d_S * (cs_nd),
             c_p: d_P * (cp_nd),
+            Eeff: E_start,
         }
 
         # set spatial variables and domain geometry
@@ -155,7 +164,7 @@ class CatalyticModel:
 
         # Controls how many space steps are taken (higher number, higher accuracy)
         model.var_pts = {
-            x: 100
+            x: x_steps
         }
 
         # Using Finite Volume discretisation on an expanding 1D grid
@@ -176,12 +185,7 @@ class CatalyticModel:
             "S(soln) at electrode [non-dim]": c_at_electrode_s,
             "P(soln) at electrode [non-dim]": c_at_electrode_p,
             "Cat_conc": cat_con,
-            "i_f": i_f,
-            "k0": k0_d,
-            "kf": kcat_for,
-            "kb": kcat_back,
-            "Cdl": Cdl,
-            "Ru": Ru,
+            "Current [non-dim]": i,
         }
         
         # Set model parameters
@@ -205,10 +209,11 @@ class CatalyticModel:
         #solver = pybamm.JaxSolver(method='BDF')
         #model.convert_to_format = 'python'
         #solver = pybamm.ScipySolver(method='BDF')
+        solver = pybamm.ScikitsDaeSolver(method="ida", atol=atoler, rtol=rtoler)
 
         # Create solver
-        model.convert_to_format = 'python'
-        solver = pybamm.ScipySolver(method='Radau', rtol=1e-6, atol=1e-6)
+        # model.convert_to_format = 'python'
+        # solver = pybamm.ScipySolver(method='Radau', rtol=1e-6, atol=1e-6)
 
         # Store discretised model and solver
         self._model = model
@@ -242,61 +247,17 @@ class CatalyticModel:
         times_nd = np.linspace(0, self._Tmax_nd, int(self._m))
         print(f"Number of timesteps: " + str(self._m))
         try:
-            solution = self._solver.solve(self._model, times_nd, inputs=parameters)
-            c_O = solution["O(surf) [non-dim]"](times_nd)
-            c_R = solution["R(surf) [non-dim]"](times_nd)
-            E = solution["Applied Voltage [non-dim]"](times_nd)
-            kf = solution["kf"](times_nd[1])
-            kb = solution["kb"](times_nd[1])
-            Cdl = solution["Cdl"](times_nd[1])
-            Ru = solution["Ru"](times_nd[1])
-            #i = solution["Current [non-dim]"](times_nd)
-            
-            #faradaic current
-            I_f = []
-            I_f.append(0)
-            
-            #capacitative current
-            I_cdl = []
-            I_cdl.append(0)
-            
-            for v in range(1, self._m):
-                
-                #generate faradaic current
-                dOdt = (c_O[v]-c_O[v-1])/self._deltaT_nd
-                cat = (kf*c_R[v]) + (kb*c_O[v])
-                I =  dOdt - cat
-                I_f.append(I)
-                
-                #generate capacitative current
-                dEdt = (E[v]-E[v-1])/self._deltaT_nd
-                dIdt = (I_f[v]-I_f[v-1])/self._deltaT_nd
-                I_Cdl = Cdl * (dEdt - (Ru*dIdt))
-                I_cdl.append(I_Cdl)
-                
-            current = []
-            for v in range(0, len(I_f)):
-                if v < len(I_f)/2:
-                    current.append(I_f[v] - I_Cdl)
-                else:
-                    current.append(I_f[v] + I_Cdl)
-            
-            
-            current = np.array(current)
-            
+            solution = self._solver.solve(self._model, times_nd, inputs=parameters)    
         except pybamm.SolverError as e:
             print(e)
             solution = np.zeros_like(times_nd)
         return (
-            current,
+            solution["Current [non-dim]"](times_nd),
             solution["Applied Voltage [non-dim]"](times_nd),
             solution["O(surf) [non-dim]"](times_nd),
             solution["R(surf) [non-dim]"](times_nd),
             solution["S(soln) at electrode [non-dim]"](times_nd),
             solution["P(soln) at electrode [non-dim]"](times_nd),
-            solution["Cat_conc"](times_nd),
-            solution["i_f"](times_nd),
-            solution["k0"](times_nd),
             times_nd
         )
 

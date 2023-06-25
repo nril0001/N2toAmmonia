@@ -1,7 +1,7 @@
 ## Main function
 import catalyticmodel05 as cm
-import Solplotter as aa
 import time
+import re
 import matplotlib.pylab as plt
 import os
 from datetime import date
@@ -21,38 +21,19 @@ def main():
     output = "output/"+folder+"/"
     
     if os.path.isdir(output) == 0:
-        os.mkdir(output, 0o666)
-        
-    #constants that can vary, but generally won't change expt to expt
-    const_parameters = {
-        "Faraday Constant [C mol-1]": 96485.3328959,
-        "Gas constant [J K-1 mol-1]": 8.314459848,
-        "Far-field concentration of S(soln) [mol cm-3]": 1e-6,
-        "Far-field concentration of P(soln) [mol cm-3]": 1e-6,
-        "Diffusion Coefficient of S [cm2 s-1]": 1e-5,
-        "Diffusion Coefficient of P [cm2 s-1]": 0,
-        "Electrode Area [cm2]": 1,
-        "Temperature [K]": 298.2,
-        "Voltage start [V]": 0.5,
-        "Voltage reverse [V]": -0.5,
-        "Voltage amplitude [V]": 0.0,
-        "Scan Rate [V s-1]": 0.05,
-        "Electrode Coverage [mol cm-2]": 1e-12,
-    }
-
-    #conditions that will change often over the course of testing
-    input_parameters = {
-        "Reversible Potential [V]": 0,
-        "Redox Rate [s-1]": 1e-3,
-        "Catalytic Rate For [cm2 mol-l s-1]": 0,
-        "Catalytic Rate Back [cm2 mol-l s-1]": 0,
-        "Symmetry factor [non-dim]": 0.5,
-        #28 Mar 2023: not fully implemented
-        "Capacitance [F]": 0, #1e-8,
-        "Uncompensated Resistance [Ohm]": 0
-    }
+        os.mkdir(output+"/SC", 0o666)
+        os.mkdir(output+"/CV", 0o666)
     
-    files = [['C:/Users/natha/Desktop/Code/DigiElech/2023-06-06 Solution only/SC/SC_k0_1e-3_Ds_1e-5_Dp_1e-5.txt', 1e-3, 1e-5]]
+    files = [['DigiElech/2023-06-06 Solution only/CV/CV_k0_1e4_Ds_1e-5_Dp_1e-5.txt', 1e-3, 1e-5]]
+    
+    #retrieve variables from file pathway
+    for t in files:
+        variables = re.findall(
+            "[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", t[0])
+        for l in range(len(variables)):
+            variables[l] = float(variables[l])
+            t.append(variables[l])
+    
     for i in files:
         print(i)
         
@@ -64,7 +45,7 @@ def main():
         for row in f:
             count += 1
             row = row.split("\t")
-            if row[0] == '':
+            if count < 3:
                 continue
             else:
                 volt.append(float(row[0]))
@@ -72,11 +53,48 @@ def main():
     
     curr = np.array(curr)
     
+    k0 = 10
+    Ru = 0
+    Cdl = 0
+    atol = 1e-10
+    rtol = 1e-10
+    t_steps = 80000
+    x_steps = 2000
+    
+    #constants that can vary, but generally won't change expt to expt
+    const_parameters = {
+        "Faraday Constant [C mol-1]": 96485.3328959,
+        "Gas constant [J K-1 mol-1]": 8.314459848,
+        "Far-field concentration of S(soln) [mol cm-3]": 1e-6,
+        "Far-field concentration of P(soln) [mol cm-3]": 0,
+        "Diffusion Coefficient of S [cm2 s-1]": 1e-5,
+        "Diffusion Coefficient of P [cm2 s-1]": 1e-5,
+        "Electrode Area [cm2]": 1,
+        "Temperature [K]": 298.2,
+        "Voltage start [V]": 0.5,
+        "Voltage reverse [V]": -0.5,
+        "Voltage amplitude [V]": .0,
+        "Scan Rate [V s-1]": 0.05,
+        "Electrode Coverage [mol cm-2]": 1e-12,
+    }
+    
+    #conditions that will change often over the course of testing
+    input_parameters = {
+        "Reversible Potential [V]": 0,
+        "Redox Rate [s-1]": k0,
+        "Catalytic Rate For [cm2 mol-l s-1]": 1000*1000,
+        "Catalytic Rate Back [cm2 mol-l s-1]": 1000*1000,
+        "Symmetry factor [non-dim]": 0.5,
+        #28 Mar 2023: not fully implemented
+        "Capacitance [F]": Cdl, #1e-8,
+        "Uncompensated Resistance [Ohm]": Ru
+    }
+    
     #setting main model to reference CatalyticModel class
-    cmodel = cm.CatalyticModel(const_parameters,seioptions)
+    cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps, x_steps)
     #e, c = aa.AnalyticalModel(100)
     #setting solved answers to ones usable here
-    #current, E_nd, O_nd, R_nd, S_nd, P_nd, cat_conc, i_f, k0, T_nd = cmodel.simulate(input_parameters)
+    # current, E_nd, O_nd, R_nd, S_nd, P_nd, T_nd = cmodel.simulate(input_parameters)
     current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
     # simulating analytical solution
     #I_ana_nd = amodel.simulate(E_nd)
@@ -89,47 +107,30 @@ def main():
     print(len(curr))
     
     #QUICK PLOTS, IMPROVE# 
+    
+    #Plot current
     plt.cla()
-    plt.plot(E_d, I_d)
+    plt.plot(volt, np.array(-curr), color = 'orange', linestyle = 'dashdot', label = 'Digielch')
+    plt.plot(E_d[1:], I_d[1:], color = 'Red', label = 'Pybamm', linestyle='dashed')
     plt.xlabel("Eapp [V]")
-    plt.ylabel("current [A]")
-    #plt.savefig(output+"CV_cat04_dim.png")
-    # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, I_d))))
-
-    plt.cla()
-    #plt.plot(E_d, I_d, color = "red", label = "current after model")
-    plt.plot(E_d[:10001], O_nd[:10001], color = "red", label = "O Maxmium peak (Oxidation)")
-    plt.plot(E_d[10001:], O_nd[10001:], color = "orange", label = "O Minimum peak (Reduction)")
-    plt.plot(E_d[:10001], R_nd[:10001], color = "purple", label = " R Maxmium peak (Oxidation)")
-    plt.plot(E_d[10001:], R_nd[10001:], color = "pink", label = "R Minimum peak (Reduction)")
-    plt.plot(volt, np.array(curr)/curr[0], color = 'g', label = 'Digielch')
-    #plt.plot(E_d, i, color = "blue", label = "current in model")
-    plt.xlabel("Eapp [non-dim]")
-    plt.ylabel("current [non-dim]")
+    plt.ylabel("Current [A]")
     plt.legend()
-    #plt.savefig(output+"CV_cat04_nondim.png")
-    #np.savetxt(output+"CV_cat04_nondim.dat", np.transpose(np.vstack((E_nd, current))))
-
-    # plt.cla()
-    # plt.plot(T_nd, current)
-    # plt.xlabel("time [non-dim]")
-    # plt.ylabel("current [non-dim]")
-    # plt.savefig(output+"Curr_vs_Time_cat04_nondim.png")
+    plt.grid()
+    #plt.savefig(output+"CV_cat04_dim.png")
+    # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
     
+    #Plot concentration profiles
     # plt.cla()
-    # plt.plot(T_nd, E_nd)
-    # plt.xlabel("time [non-dim]")
-    # plt.ylabel("Eapp [non-dim]")
-    # plt.savefig(output+"Eappvstime_cat04_nondim.png")
-    
-    # plt.cla()
-    # plt.plot(T_nd, cat_conc, label="Cat_conc")
-    # plt.plot(T_nd, i_f, label="i_f")
-    # plt.xlabel("time [non-dim]")
-    # plt.ylabel("rates [non-dim]")
+    # plt.plot(volt[:398], np.array(curr[:398])/curr[0], color = 'orange', linestyle = 'dashdot', label = 'Digielch - S')
+    # plt.plot(volt[399:], np.array(curr[399:])/curr[0], color = 'green', linestyle = 'dashdot', label = 'Digielch - P')
+    # plt.plot(E_d[1:], O_nd[1:], color = 'Red', label = 'S', linestyle='dashed')
+    # plt.plot(E_d[1:], R_nd[1:], color = 'Blue', label = 'P', linestyle='dashed')
+    # plt.xlabel("Eapp [V]")
+    # plt.ylabel("Surface Coverage [non-dim]")
     # plt.legend()
-    # plt.savefig(output+"ratesvstime_cat04.png")
-    # np.savetxt(output+"ratesvstime_cat04.dat", np.transpose(np.vstack((T_nd, O_nd, R_nd))))
+    # plt.grid()
+    #plt.savefig(output+"CV_cat04_dim.png")
+    # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
     
     return
 

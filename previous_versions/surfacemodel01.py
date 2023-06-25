@@ -1,10 +1,17 @@
-## Basic Redox in Bulk Solution - diffusion controlled
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jun  9 11:39:27 2023
+
+@author: Nathan
+"""
+
+## Surface Model Implementing Current Using DAE and E-Eeff/dt approx, Eeff and E are the equations in the rhs
 
 import pybamm
 import numpy as np
 
 class CatalyticModel:
-    def __init__(self,const_parameters,seioptions, atoler, rtoler, t_steps, x_steps):
+    def __init__(self,const_parameters,seioptions):
 
         #Const_parameters are the parameters to be passed into this model via main.py
         param = pybamm.ParameterValues(const_parameters)
@@ -15,10 +22,6 @@ class CatalyticModel:
         # Create dimensional fixed parameters
         # the "_d" indicates the dimensional form, while the lack of one/prescence of "_nd" means it's nondimensional
         #Adding separate D parameters for S and P
-        CS_d = pybamm.Parameter("Far-field concentration of S(soln) [mol cm-3]")
-        CP_d = pybamm.Parameter("Far-field concentration of P(soln) [mol cm-3]")
-        DS_d = pybamm.Parameter("Diffusion Coefficient of S [cm2 s-1]")
-        DP_d = pybamm.Parameter("Diffusion Coefficient of P [cm2 s-1]")
         F = pybamm.Parameter("Faraday Constant [C mol-1]")
         R = pybamm.Parameter("Gas constant [J K-1 mol-1]")
         a = pybamm.Parameter("Electrode Area [cm2]")
@@ -27,6 +30,7 @@ class CatalyticModel:
         E_start_d = pybamm.Parameter("Voltage start [V]")
         E_reverse_d = pybamm.Parameter("Voltage reverse [V]")
         v = pybamm.Parameter("Scan Rate [V s-1]")
+        Gamma = pybamm.Parameter("Electrode Coverage [mol cm-2]")
 
         # Create dimensional input parameters
         E0_d = pybamm.InputParameter("Reversible Potential [V]")
@@ -38,29 +42,12 @@ class CatalyticModel:
         # Create scaling factors   for non-dimensionalisation
         E_0 = (R * T) / F #units are V
         T_0 = E_0 / v #units are seconds
-        X_0 = pybamm.sqrt((F*v)/(R*T*DS_d)) #units are cm
-        #I_0 = (DS_d * F * a * CS_d)/ X_0  #units are A
-        I_0 = F*a*CS_d*pybamm.sqrt(DS_d)*pybamm.sqrt((F*v)/(R*T))
-        K_0 = (pybamm.sqrt(R * T * DS_d/F * v))/DS_d #units are s
-        #K_0 = a / Dmax
-        Cdl_0 = (a * E_0)/(I_0 * T_0) # V/A s
+        I_0 = (F * a * Gamma * v) / E_0  #units are A
+        Cdl_0 = E_0 / (I_0 * T_0) # V/A s
         Ru_0 = I_0 / E_0 #units are Amps/V
         
         # Non-dimensionalise parameters
         E0 = E0_d / E_0 #no units
-        k0 = k0_d * K_0 #no units
-        Cdl = Cdl_d * Cdl_0 #no units
-        Ru = Ru_d * Ru_0 #no units
-        
-        #Diffusion coefficients
-        d_S = DS_d/DS_d
-        d_P = DP_d/DS_d
-        d_max = pybamm.maximum(d_S, d_P)
-        
-        #Concentrations
-        Ctot = CS_d + CP_d
-        cs_nd = (CS_d/Ctot)
-        cp_nd = (CP_d/Ctot)
 
         E_start = E_start_d / E_0
         E_reverse = E_reverse_d / E_0
@@ -68,18 +55,30 @@ class CatalyticModel:
         
         #creating time scale and non-dimensionalizing
         Tmax_nd = ((abs(E_start_d - E_reverse_d) / v * 2)/ T_0)
-        
         #number of time steps
-        m = t_steps
-        
+        m = 20000
         #length of time step, nondimensional
         deltaT_nd = Tmax_nd / m
+        #kinetic constants
+        k0 = k0_d * T_0 #no units
         
+        #Concentrations
+        sc_Ox_nd = Gamma/Gamma
         
+        Cdl = Cdl_d * Cdl_0 #no units
+        Ru = Ru_d * Ru_0 #no units
+
         # Input voltage protocol
+        
         Edc_forward = -pybamm.t
         Edc_backwards = pybamm.t - 2 * t_reverse
         Eapp = E_start + \
+            (pybamm.t <= t_reverse) * Edc_forward + \
+            (pybamm.t > t_reverse) * Edc_backwards
+         
+        #protocol for E which is one step ahead of Eeff
+        E_s = E_start - deltaT_nd
+        Ea = E_s + \
             (pybamm.t <= t_reverse) * Edc_forward + \
             (pybamm.t > t_reverse) * Edc_backwards                   
 
@@ -88,64 +87,51 @@ class CatalyticModel:
 
         # Create state variables for model
         #sc is surface concentration
-        c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
-        c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
-        Eeff = pybamm.Variable("Effective Voltage [non-dim]")      
-
-        # defining boundary values for S and P
-        c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
-        c_at_electrode_p = pybamm.BoundaryValue(c_p, "left")
-
-        # Faradaic current (Butler Volmer)
-        #i_f = pybamm.BoundaryGradient(c_s, "left")
-        butler_volmer = k0 * ((c_at_electrode_p) * pybamm.exp((1 - alpha) * (Eeff - E0))
-                            - ((c_at_electrode_s) * pybamm.exp(-alpha * (Eeff - E0))))  
-        
-        dOdt = butler_volmer
-        
-        i_f = dOdt
-        
-        i_cap = Cdl * Eapp.diff(pybamm.t)
-        
-        i = i_f + i_cap
+        sc_Ox = pybamm.Variable("O(surf) [non-dim]")
+        sc_Red = pybamm.Variable("R(surf) [non-dim]")
+        Eeff = pybamm.Variable("Eeff [non-dim]")
+        E = pybamm.Variable("E [non-dim]")
 
         #"left" indicates environment directly on electrode surface; x = 0
         #"right" indicates environment between diffusion layer and bulk solution; x = xmax 
 
+        # Faradaic current (Butler Volmer)     
+        i_f = (k0 * (sc_Red) * np.e**((1-alpha) * (Eeff-E0))) - (k0 * (sc_Ox) * np.e**(-alpha * (Eeff-E0)))
+        
+        i_cap = Cdl*(E - Eeff)/deltaT_nd + Cdl*(E - Eeff)/deltaT_nd
+        
+        i = i_f + ((pybamm.t <= t_reverse) * i_cap) - ((pybamm.t > t_reverse) * i_cap)
+        # i = i_f + i_cap
+        #dIdt = i.diff(pybamm.t)
+
         # PDEs - left hand side is assumed to be time derivative of the PDE
-        #dividing by their own coefficients
         model.rhs = {
-            c_s: pybamm.div(pybamm.grad(c_s)) * d_S,
-            c_p: pybamm.div(pybamm.grad(c_p)) * d_P,
+            sc_Ox: i_f, #i_f is the echem contribution, cat_con is chemical contribution
+            sc_Red: -i_f,
+            #E: (pybamm.t <= t_reverse) * (-1) + (pybamm.t > t_reverse) * (1) - Ru*dIdt,
+            #Eeff: (pybamm.t <= t_reverse) * (-1) + (pybamm.t > t_reverse) * (1) - Ru*dIdt,
         }
         
         # algebraic equations (none)
         model.algebraic = {
+            E: Ea - Ru*i - E,
             Eeff: Eapp - Ru*i - Eeff,
         }
-        
+
         # Setting boundary and initial conditions
         model.boundary_conditions = {
-            c_s: {
-                "right": (cs_nd, "Dirichlet"),
-                "left": ((-butler_volmer/d_S), "Neumann"),                    
-            },
-
-            c_p: {
-                "right": (cp_nd, "Dirichlet"),
-                "left": ((butler_volmer/d_P), "Neumann"),                 
-            } 
         }
 
         model.initial_conditions = {
-            c_s: cs_nd,
-            c_p: cp_nd,
+            sc_Ox: pybamm.Scalar(1),
+            sc_Red: pybamm.Scalar(0),
             Eeff: E_start,
+            E: E_s
         }
 
         # set spatial variables and domain geometry
         x = pybamm.SpatialVariable('x', domain="solution")
-        x_max = 6 * pybamm.sqrt(d_max * Tmax_nd)
+        x_max = 6*pybamm.sqrt(Tmax_nd)
         model.geometry = pybamm.Geometry({
             "solution": {
                     x: {
@@ -157,7 +143,7 @@ class CatalyticModel:
 
         # Controls how many space steps are taken (higher number, higher accuracy)
         model.var_pts = {
-            x: x_steps
+            x: 100
         }
 
         # Using Finite Volume discretisation on an expanding 1D grid
@@ -172,10 +158,12 @@ class CatalyticModel:
 
         # model variables
         model.variables = {
-            "Current [non-dim]": i,
             "Applied Voltage [non-dim]": Eapp,
-            "S(soln) at electrode [non-dim]": c_at_electrode_s,
-            "P(soln) at electrode [non-dim]": c_at_electrode_p,
+            "Effective Voltage [non-dim]": Eeff,
+            "Step Ahead Effective Voltage [non-dim]": E,
+            "O(surf) [non-dim]": sc_Ox,
+            "R(surf) [non-dim]": sc_Red,
+            "Current [non-dim]": i,
         }
         
         # Set model parameters
@@ -189,14 +177,21 @@ class CatalyticModel:
             geometry, model.submesh_types, model.var_pts)
         disc = pybamm.Discretisation(mesh, model.spatial_methods)
         disc.process_model(model)
+        
+        # Create solver
+        # solver = pybamm.CasadiSolver(mode="fast", atol=1e-8, rtol=1e-8)
+        # solver = pybamm.IDAKLUSolver()
+        solver = pybamm.ScikitsDaeSolver(atol=1e-12, rtol=1e-3)
+        #solver = pybamm.ScikitsOdeSolver(method='cvode', rtol=1e-06, atol=1e-06)
+        #model.convert_to_format = 'jax'
+        #solver = pybamm.JaxSolver(method='BDF')
+        #model.convert_to_format = 'python'
+        #solver = pybamm.ScipySolver(method='BDF')
 
         # Create solver
         # model.convert_to_format = 'python'
-        solver = pybamm.ScikitsDaeSolver(method="ida", atol=atoler, rtol=rtoler)
-        # model.convert_to_format = 'casadi'
-        # solver = pybamm.CasadiSolver(mode='safe', rtol=1e-9, atol=1e-9, root_method='casadi')
-        
-    
+        # solver = pybamm.ScipySolver(method='Radau', rtol=1e-6, atol=1e-6)
+
         # Store discretised model and solver
         self._model = model
         self._param = param
@@ -206,16 +201,14 @@ class CatalyticModel:
         self._E_0 = param.process_symbol(E_0).evaluate()
         self._I_0 = param.process_symbol(I_0).evaluate()
         self._T_0 = param.process_symbol(T_0).evaluate()
-        self._CS_d = param.process_symbol(CS_d).evaluate()
-        self._CP_d = param.process_symbol(CP_d).evaluate()
         self._deltaT_nd = param.process_symbol(deltaT_nd).evaluate()
+        self._gammma = param.process_symbol(Gamma).evaluate()
 
         # store time scale related things
         self._Tmax_nd = param.process_symbol(Tmax_nd).evaluate()
         self._m = m
-        self._x = x_steps
         
-        print("Catalytic Model 05 initialized successfully.")
+        print("Catalytic Model 04 initialized successfully.")
 
     def simulate(self, parameters):
         #####DEBUGGING#####
@@ -224,21 +217,21 @@ class CatalyticModel:
         #7 May 23: method to pull times from init
         times_nd = np.linspace(0, self._Tmax_nd, int(self._m))
         print(f"Number of timesteps: " + str(self._m))
-        print(f"Number of spacesteps: " + str(self._x))
+        current = 0
         try:
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
-            c_S = solution["S(soln) at electrode [non-dim]"](times_nd)
-            c_P = solution["P(soln) at electrode [non-dim]"](times_nd)
-            E = solution["Applied Voltage [non-dim]"](times_nd)
-            current = solution["Current [non-dim]"](times_nd)
-            
         except pybamm.SolverError as e:
             print(e)
             solution = np.zeros_like(times_nd)
         return (
-            current, E,
-            c_S, c_P,
+            solution["Current [non-dim]"](times_nd), 
+            solution["Applied Voltage [non-dim]"](times_nd),
+            solution["O(surf) [non-dim]"](times_nd),
+            solution["R(surf) [non-dim]"](times_nd),
             times_nd,
+            solution["Effective Voltage [non-dim]"](times_nd),
+            solution["Step Ahead Effective Voltage [non-dim]"](times_nd),
+            solution
         )
 
 #TODO: Make a redimensionalise function
