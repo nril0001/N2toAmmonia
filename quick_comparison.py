@@ -18,13 +18,14 @@ def main():
 
     #folder pathway - needs to be set to read all txt files that want analysed
     #use same naming conventions for text files as files in GammaTemp Variation
-    pathway1 = "DigiElech/2023-06-06 Solution only/CV/"
-    # pathway2 = "DigiElech/2023-06-06 Solution only/SC/"
+    pathway1 = "DigiElech/2023-06-26 solution/CV/"
+    pathway2 = "DigiElech/2023-06-26 solution/SC/"
     output = "output/"+folder+"/"
 
     if os.path.isdir(output) == 0:
-        os.mkdir(output+"/SC", 0o666)
-        os.mkdir(output+"/CV", 0o666)
+        os.mkdir(output, 0o666)
+        os.mkdir(output+"SC/", 0o666)
+        os.mkdir(output+"CV/", 0o666)
 
     #list to store files
     files_cv = []
@@ -36,11 +37,11 @@ def main():
         if os.path.isfile(os.path.join(pathway1, path)):
             files_cv.append([pathway1+path])
             
-    #Iterate directory of SCs
-    # for path in os.listdir(pathway2):
-    #     #check if current path is a file
-    #     if os.path.isfile(os.path.join(pathway2, path)):
-    #         files_sc.append([pathway2+path])
+    # Iterate directory of SCs
+    for path in os.listdir(pathway2):
+        #check if current path is a file
+        if os.path.isfile(os.path.join(pathway2, path)):
+            files_sc.append([pathway2+path])
 
     #retrieve variables from file pathway
     for t in files_cv:
@@ -50,27 +51,28 @@ def main():
             variables[l] = float(variables[l])
             t.append(variables[l])
             
-    x = [2000]
+    x = [1000]
     Os = []
     Rs = []
     Es = []
     Is = []
     for o in x:
         ti = time.time()
-        atol = 1e-10
-        rtol = 1e-10
-        t_steps = 60000
+        atol = 1e-14
+        rtol = 1e-8
+        t_steps = 300000
         x_steps = o
         
         for i in files_cv:
             #constants that can vary, but generally won't change expt to expt
+            print(i)
             const_parameters = {
                 "Faraday Constant [C mol-1]": 96485.3328959,
                 "Gas constant [J K-1 mol-1]": 8.314459848,
                 "Far-field concentration of S(soln) [mol cm-3]": 1e-6,
                 "Far-field concentration of P(soln) [mol cm-3]": 0,
-                "Diffusion Coefficient of S [cm2 s-1]": i[6],
-                "Diffusion Coefficient of P [cm2 s-1]": i[7],
+                "Diffusion Coefficient of S [cm2 s-1]": i[8],
+                "Diffusion Coefficient of P [cm2 s-1]": i[9],
                 "Electrode Area [cm2]": 1,
                 "Temperature [K]": 298,
                 "Voltage start [V]": 0.5,
@@ -87,8 +89,8 @@ def main():
                 "Catalytic Rate For [cm2 mol-l s-1]": 0,
                 "Catalytic Rate Back [cm2 mol-l s-1]": 0,
                 "Symmetry factor [non-dim]": 0.5,
-                "Capacitance [F]": 0, #1e-8,
-                "Uncompensated Resistance [Ohm]": 0
+                "Uncompensated Resistance [Ohm]": i[6],
+                "Capacitance [F]": i[7],
             }
             
             # for unpacking DigiElech CVs
@@ -110,19 +112,19 @@ def main():
             curr = np.array(curr) * -1
     
             # for unpacking DigiElech SCs
-            # voltage = []
-            # surfcon = []
-            # row = []
-            # count = 0
-            # f = open(files_sc[files_cv.index(i)][0],'r')
-            # for row in f:
-            #     count += 1
-            #     if count < 3:
-            #         continue
-            #     else:
-            #         row = row.split("\t")
-            #         voltage.append(float(row[0]))
-            #         surfcon.append(float(row[1]))
+            potential = []
+            surfcon = []
+            row = []
+            count = 0
+            f = open(files_sc[files_cv.index(i)][0],'r')
+            for row in f:
+                count += 1
+                if count < 3:
+                    continue
+                else:
+                    row = row.split("\t")
+                    potential.append(float(row[0]))
+                    surfcon.append(float(row[1]))
                     
             # v = voltage
             # r = surfcon
@@ -130,40 +132,44 @@ def main():
             #setting main model to reference CatalyticModel class
             cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps, x_steps)
             title = i[0].split("/")
+            heading = files_sc[files_cv.index(i)][0].split("/")
             print(title[3])
+            print(heading[3])
             current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
             
             ##redimensionalizing here for now. Messy to do in main, move later
             I_d = current * cmodel._I_0 * -1
             E_d = E_nd * cmodel._E_0
-            Es.append(E_d)
-            Is.append(I_d)
-            Os.append(O_nd)
-            Rs.append(R_nd)
+            # Es.append(E_d)
+            # Is.append(I_d)
+            # Os.append(O_nd)
+            # Rs.append(R_nd)
          
             #Plot current
             plt.cla()
             plt.plot(E_d[1:], (I_d[1:]), color = "red", label="PyBamm")
             plt.plot(voltage, np.array(-curr), color = 'blue', linestyle = 'dashdot', label = 'Digielch')
-            plt.title("Cyclic Voltammogram: K0_" + str(i[5]) + "_Ds_"+str(i[6])+"_Dp_"+str(i[7]) + "_Xstep_" + str(o) )
+            plt.title("CV: K0_" + str(i[5]) + "_Ru_"+str(i[6]) +"_Cd_"+str(i[7]) + "_Ds_"+str(i[8])+"_Dp_"+str(i[9]) + "_Xstep_" + str(o) )
             plt.xlabel("Potential [V]")
             plt.ylabel("Current [A]")
             plt.legend()
             plt.grid()
-            plt.savefig(output+"CV/CV_cat05_dim_ko_"+str(i[5])+"_Ds_"+str(i[6])+"_Dp_"+str(i[7])+"_Xsteps_"+str(o)+".png", dpi=600)
+            plt.savefig(output+"CV/CV_cat05_dim_K0_" + str(i[5]) + "_Ru_"+str(i[6]) +"_Cd_"+str(i[7]) + "_Ds_"+str(i[8])+"_Dp_"+str(i[9]) + "_Xstep_" + str(o)+".png", dpi=600)
+            np.savetxt(output+"CV/CV_cat05_dim_K0_" + str(i[5]) + "_Ru_"+str(i[6]) +"_Cd_"+str(i[7]) + "_Ds_"+str(i[8])+"_Dp_"+str(i[9]) + "_Xstep_" + str(o)+".dat", np.transpose(np.vstack((E_d, I_d))))
         
             # Plot concentration 
-            # plt.cla()
-            # plt.plot(E_d, (O_nd), color = "red", label="PyBamm - S")
-            # plt.plot(E_d, (R_nd), color = "orange", label="PyBamm - P")
-            # plt.plot(voltage[:398], np.array(surfcon[:398])/surfcon[0], color = 'blue', linestyle = 'dashdot', label = 'Digielch - S')
-            # plt.plot(voltage[399:], np.array(surfcon[399:])/surfcon[0], color = 'green', linestyle = 'dashdot', label = 'Digielch - P')
-            # plt.title("Norm Conc of S and P: K0_" + str(i[5]) + "_Ds_"+str(i[6])+"_Dp_"+str(i[7]) + "_Xstep_" + str(o) )
-            # plt.xlabel("Potential [V]")
-            # plt.ylabel("Surface Coverage [non-dim]")
-            # plt.legend()
-            # plt.grid()
-            # plt.savefig(output+"SC/Conc_S&P_cat05_dim_ko_"+str(i[5])+"_Ds_"+str(i[6])+"_Dp_"+str(i[7])+"_Xsteps_"+str(o)+".png", dpi=600)
+            plt.cla()
+            plt.plot(E_d, (O_nd), color = "red", label="PyBamm - S")
+            plt.plot(E_d, (R_nd), color = "orange", label="PyBamm - P")
+            plt.plot(potential[:398], np.array(surfcon[:398])/surfcon[0], color = 'blue', linestyle = 'dashdot', label = 'Digielch - S')
+            plt.plot(potential[399:], np.array(surfcon[399:])/surfcon[0], color = 'green', linestyle = 'dashdot', label = 'Digielch - P')
+            plt.title("Norm SC: K0_" + str(i[5]) + "_Ru_"+str(i[6]) +"_Cd_"+str(i[7]) + "_Ds_"+str(i[8])+"_Dp_"+str(i[9]) + "_Xstep_" + str(o) )
+            plt.xlabel("Potential [V]")
+            plt.ylabel("Surface Coverage [non-dim]")
+            plt.legend()
+            plt.grid()
+            plt.savefig(output+"SC/SC_cat05_dim_K0_" + str(i[5]) + "_Ru_"+str(i[6]) +"_Cd_"+str(i[7]) + "_Ds_"+str(i[8])+"_Dp_"+str(i[9]) + "_Xstep_" + str(o)+".png", dpi=600)
+            np.savetxt(output+"SC/SC_cat05_dim_K0_" + str(i[5]) + "_Ru_"+str(i[6]) +"_Cd_"+str(i[7]) + "_Ds_"+str(i[8])+"_Dp_"+str(i[9]) + "_Xstep_" + str(o)+".dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
             
             print("complete in time: " + str((time.time()-ti)/60) + " minutes")       
     

@@ -21,10 +21,13 @@ def main():
     output = "output/"+folder+"/"
     
     if os.path.isdir(output) == 0:
-        os.mkdir(output+"/SC", 0o666)
-        os.mkdir(output+"/CV", 0o666)
+        os.mkdir(output, 0o666)
+        os.mkdir(output+"SC", 0o666)
+        os.mkdir(output+"CV", 0o666)
+        
+        
     
-    files = [['DigiElech/2023-06-06 Solution only/CV/CV_k0_1e4_Ds_1e-5_Dp_1e-5.txt', 1e-3, 1e-5]]
+    files = [['DigiElech/2023-06-26 solution/CV/CV_k0_10000_R_800_Cd_1e-9_Ds_2e-5_Dp_1.5e-5.txt', 1e-3, 1e-5]]
     
     #retrieve variables from file pathway
     for t in files:
@@ -53,13 +56,13 @@ def main():
     
     curr = np.array(curr)
     
-    k0 = 10
-    Ru = 0
-    Cdl = 0
-    atol = 1e-10
-    rtol = 1e-10
-    t_steps = 80000
-    x_steps = 2000
+    k0 = 10000
+    Ru = 800
+    Cdl = 1e-9
+    atol = 1e-14
+    rtol = 1e-8
+    t_steps = 240000
+    x_steps = 800
     
     #constants that can vary, but generally won't change expt to expt
     const_parameters = {
@@ -85,9 +88,8 @@ def main():
         "Catalytic Rate For [cm2 mol-l s-1]": 1000*1000,
         "Catalytic Rate Back [cm2 mol-l s-1]": 1000*1000,
         "Symmetry factor [non-dim]": 0.5,
-        #28 Mar 2023: not fully implemented
+        "Uncompensated Resistance [Ohm]": Ru,
         "Capacitance [F]": Cdl, #1e-8,
-        "Uncompensated Resistance [Ohm]": Ru
     }
     
     #setting main model to reference CatalyticModel class
