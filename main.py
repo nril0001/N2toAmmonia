@@ -59,10 +59,10 @@ def main():
     k0 = 10000
     Ru = 800
     Cdl = 1e-9
-    atol = 1e-14
-    rtol = 1e-8
-    t_steps = 240000
-    x_steps = 800
+    atol = 1e-12
+    rtol = 1e-7
+    t_steps = 60000
+    x_steps = 400
     
     #constants that can vary, but generally won't change expt to expt
     const_parameters = {
