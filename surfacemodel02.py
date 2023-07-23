@@ -11,7 +11,7 @@ import pybamm
 import numpy as np
 
 class CatalyticModel:
-    def __init__(self,const_parameters,seioptions, atoler, rtoler, steps):
+    def __init__(self,const_parameters,seioptions, atoler, rtoler, steps, xsteps):
 
         #Const_parameters are the parameters to be passed into this model via main.py
         param = pybamm.ParameterValues(const_parameters)

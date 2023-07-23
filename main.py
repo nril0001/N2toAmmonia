@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel05 as cm
+import catalyticmodel05_3 as cm
 import time
 import re
 import matplotlib.pylab as plt
@@ -24,12 +24,10 @@ def main():
         os.mkdir(output, 0o666)
         os.mkdir(output+"SC", 0o666)
         os.mkdir(output+"CV", 0o666)
-        
-        
     
     files = [['DigiElech/2023-06-26 solution/CV/CV_k0_10000_R_800_Cd_1e-9_Ds_2e-5_Dp_1.5e-5.txt', 1e-3, 1e-5]]
     
-    #retrieve variables from file pathway
+    # retrieve variables from file pathway
     for t in files:
         variables = re.findall(
             "[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", t[0])
@@ -56,13 +54,13 @@ def main():
     
     curr = np.array(curr)
     
-    k0 = 10000
+    k0 = 100
     Ru = 800
     Cdl = 1e-9
     atol = 1e-12
-    rtol = 1e-7
-    t_steps = 60000
-    x_steps = 400
+    rtol = 1e-8
+    t_steps = 2**14
+    x_steps = 100
     
     #constants that can vary, but generally won't change expt to expt
     const_parameters = {
@@ -70,8 +68,8 @@ def main():
         "Gas constant [J K-1 mol-1]": 8.314459848,
         "Far-field concentration of S(soln) [mol cm-3]": 1e-6,
         "Far-field concentration of P(soln) [mol cm-3]": 0,
-        "Diffusion Coefficient of S [cm2 s-1]": 1e-5,
-        "Diffusion Coefficient of P [cm2 s-1]": 1e-5,
+        "Diffusion Coefficient of S [cm2 s-1]": 2e-5,
+        "Diffusion Coefficient of P [cm2 s-1]": 1.5e-5,
         "Electrode Area [cm2]": 1,
         "Temperature [K]": 298.2,
         "Voltage start [V]": 0.5,
@@ -98,6 +96,7 @@ def main():
     #setting solved answers to ones usable here
     # current, E_nd, O_nd, R_nd, S_nd, P_nd, T_nd = cmodel.simulate(input_parameters)
     current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
+    # current, E_nd, T_nd = cmodel.simulate(input_parameters)
     # simulating analytical solution
     #I_ana_nd = amodel.simulate(E_nd)
     ##redimensionalizing here for now. Messy to do in main, move later
@@ -106,11 +105,11 @@ def main():
 
     #I_ana_d = I_ana_nd *cmodel._I_0
     #print(k0[0])
-    print(len(curr))
+    # print(len(curr))
     
     #QUICK PLOTS, IMPROVE# 
     
-    #Plot current
+    # Plot current
     plt.cla()
     plt.plot(volt, np.array(-curr), color = 'orange', linestyle = 'dashdot', label = 'Digielch')
     plt.plot(E_d[1:], I_d[1:], color = 'Red', label = 'Pybamm', linestyle='dashed')
@@ -118,8 +117,15 @@ def main():
     plt.ylabel("Current [A]")
     plt.legend()
     plt.grid()
-    #plt.savefig(output+"CV_cat04_dim.png")
+    plt.savefig(output+"CV_cat04_dim.png", dpi=600)
     # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
+    
+    # plt.cla()
+    # plt.plot(T_nd, capa, color = 'Red', label = 'Pybamm', linestyle='dashed')
+    # plt.xlabel("Time [s]")
+    # plt.ylabel("Eapp [V]")
+    # plt.legend()
+    # plt.grid()
     
     #Plot concentration profiles
     # plt.cla()

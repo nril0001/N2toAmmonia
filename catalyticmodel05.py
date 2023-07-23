@@ -77,11 +77,11 @@ class CatalyticModel:
         
         
         # Input voltage protocol
-        Edc_forward = -pybamm.t
-        Edc_backwards = pybamm.t - 2 * t_reverse
-        Eapp = E_start + \
-            (pybamm.t <= t_reverse) * Edc_forward + \
-            (pybamm.t > t_reverse) * Edc_backwards                   
+        # Edc_forward = -pybamm.t
+        # Edc_backward = pybamm.t - 2 * t_reverse
+        condition1 = (pybamm.t <= t_reverse)
+        condition2 = (pybamm.t >= t_reverse)
+        # Eapp = (E_start + Edc_forward*condition1 + Edc_backward*condition2)                
 
         # create PyBaMM model object
         model = pybamm.BaseBatteryModel(options=seioptions)
@@ -90,7 +90,9 @@ class CatalyticModel:
         #sc is surface concentration
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
-        Eeff = pybamm.Variable("Effective Voltage [non-dim]")      
+        Eeff = pybamm.Variable("Effective Voltage [non-dim]") 
+        Eapp = pybamm.Variable("Applied Voltage [non-dim]") 
+        time = pybamm.Variable("Time [non-dim]")
 
         # defining boundary values for S and P
         c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
@@ -105,7 +107,7 @@ class CatalyticModel:
         
         i_f = dOdt
         
-        i_cap = Cdl * Eapp.diff(pybamm.t)
+        i_cap = Cdl * Eapp.diff(time)
         
         i = i_f + i_cap
 
@@ -115,6 +117,8 @@ class CatalyticModel:
         # PDEs - left hand side is assumed to be time derivative of the PDE
         #dividing by their own coefficients
         model.rhs = {
+            time: 1,
+            Eapp: condition1*(-1) + condition2, 
             c_s: pybamm.div(pybamm.grad(c_s)) * d_S,
             c_p: pybamm.div(pybamm.grad(c_p)) * d_P,
         }
@@ -138,9 +142,11 @@ class CatalyticModel:
         }
 
         model.initial_conditions = {
+            time: pybamm.Scalar(0),
             c_s: cs_nd,
             c_p: cp_nd,
             Eeff: E_start,
+            Eapp: E_start,
         }
 
         # set spatial variables and domain geometry
@@ -192,9 +198,10 @@ class CatalyticModel:
 
         # Create solver
         # model.convert_to_format = 'python'
-        # solver = pybamm.ScikitsDaeSolver(method="ida", atol=atoler, rtol=rtoler)
-        model.convert_to_format = 'casadi'
-        solver = pybamm.CasadiSolver(mode='safe', rtol=1e-9, atol=1e-9, root_method='casadi')
+        solver = pybamm.ScikitsDaeSolver(atol=atoler, rtol=rtoler)
+        # model.convert_to_format = 'casadi'
+        # solver = pybamm.IDAKLUSolver(atol=atoler, rtol=rtoler)
+        # solver = pybamm.CasadiSolver(mode='fast', rtol=rtoler, atol=atoler, root_method='casadi')
         
     
         # Store discretised model and solver
