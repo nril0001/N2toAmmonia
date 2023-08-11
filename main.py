@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel05_3 as cm
+import catalyticmodel05_3b as cm
 import time
 import re
 import matplotlib.pylab as plt
