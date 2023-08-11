@@ -1,4 +1,11 @@
-## Basic Redox in Bulk Solution - diffusion controlled
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Aug 11 16:20:08 2023
+
+@author: Nathan
+"""
+
+ ## Basic Redox in Bulk Solution - diffusion controlled
 
 import pybamm
 import numpy as np
@@ -35,6 +42,7 @@ class CatalyticModel:
 
         # Create dimensional input parameters
         self.E0_d = pybamm.InputParameter("Reversible Potential [V]")
+        self.k0_d = pybamm.InputParameter("Redox Rate [s-1]")
         self.k0_d = pybamm.InputParameter("Redox Rate [cm s-1]")
         self.k1_d = pybamm.InputParameter("Catalytic Rate [s-1]")
         self.alpha = pybamm.InputParameter("Symmetry factor [non-dim]")
@@ -42,20 +50,22 @@ class CatalyticModel:
         self.Ru_d = pybamm.InputParameter("Uncompensated Resistance [Ohm]")
 
         # Create scaling factors   for non-dimensionalisation
-        self.E_0 = self.F / (self.R * self.T) #units are V-1
-        self.T_0 = self.E_0 * self.v #units are seconds-1
+        self.E_0 = (self.R * self.T) / self.F #units are V
+        self.T_0 = self.E_0 / self.v #units are seconds
         self.X_0 = pybamm.sqrt((self.F*self.v)/(self.R*self.T*self.DS_d)) #units are cm
         #I_0 = (DS_d * F * a * CS_d)/ X_0  #units are A
-        self.I_0 = self.F*self.a*self.DS_d*self.CS_d*pybamm.sqrt(self.DS_d*self.T_0) #units are ampere-1
-        self.K_0 = (pybamm.sqrt(self.DS_d / self.T_0))/self.DS_d #units are s/cm
+        self.I_0 = self.F*self.a*self.CS_d*pybamm.sqrt(self.DS_d)*pybamm.sqrt((self.F*self.v)/(self.R*self.T))
+        self.K_0 = (pybamm.sqrt(self.R * self.T * self.DS_d/self.F * self.v))/self.DS_d #units are s
         #K_0 = a / Dmax
-        #self.Cdl_0 = (self.a * self.I_0) / (self.E_0 * self.T_0) # cm2 V s A-1
-        self.Cdl_0 = (self.I_0 * self.T_0) / self.E_0 #units are F-1 (V A-1 s-1)
-        self.Ru_0 = self.E_0 / self.I_0 #units are Amps / V
+        self.K_0 = (pybamm.sqrt(self.R * self.T * self.DS_d/self.F * self.v))/self.DS_d #units are cm/s, heterogenous
+        self.K_1 = self.R * self.T/self.F * self.v #units are s, homogenous
+        self.Cdl_0 = (self.a * self.E_0)/(self.I_0 * self.T_0) # V/A s
+        self.Ru_0 = self.I_0 / self.E_0 #units are Amps/V
         
         # Non-dimensionalise parameters
-        self.E0 = self.E0_d * self.E_0 #no units
+        self.E0 = self.E0_d / self.E_0 #no units
         self.k0 = self.k0_d * self.K_0 #no units
+        self.k1 = self.k1_d * self.K_1 # no units
         self.Cdl = self.Cdl_d * self.Cdl_0 #no units
         self.Ru = self.Ru_d * self.Ru_0 #no units
         
@@ -69,11 +79,11 @@ class CatalyticModel:
         self.cs_nd = (self.CS_d/self.Ctot)
         self.cp_nd = (self.CP_d/self.Ctot)
 
-        self.E_start = self.E_start_d * self.E_0
-        self.E_reverse = self.E_reverse_d * self.E_0
+        self.E_start = self.E_start_d / self.E_0
+        self.E_reverse = self.E_reverse_d / self.E_0
         
         #creating time scale and non-dimensionalizing
-        self.Tmax_nd = ((abs(self.E_start_d - self.E_reverse_d) / self.v * 2) * self.T_0)
+        self.Tmax_nd = ((abs(self.E_start_d - self.E_reverse_d) / self.v * 2)/ self.T_0)
         
         #length of time step, nondimensional
         self.deltaT_nd = self.Tmax_nd / self.t_steps
@@ -98,18 +108,30 @@ class CatalyticModel:
         
         if sweep == "forward":
             Edc = -1
+            i_cap = -self.Cdl * self.deltaT_nd
             Cs = self.cs_nd
             Cp = self.cp_nd
             Ee = self.E_start
             Ea = self.E_start
+            t = 0
         elif sweep == "backward":
             Edc = 1
+            i_cap = self.Cdl * self.deltaT_nd
             Cs = pybamm.Array(Cs, domain="solution")
             Cp = pybamm.Array(Cp, domain="solution")
             Ee = Ee 
             Ea = Ea
-            
-        t = 0
+        
+        # create PyBaMM model object
+        model = pybamm.BaseBatteryModel(options=self.seioptions)
+
+        # Create state variables for model
+        #sc is surface concentration
+        c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
+        c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
+        Eeff = pybamm.Variable("Effective Voltage [non-dim]")
+        Eapp = pybamm.Variable("Applied Voltage [non-dim]")
+            t = 0
 
         # defining boundary values for S and P
         c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
@@ -123,7 +145,7 @@ class CatalyticModel:
         
         i_f = dOdt
         
-        i_cap = self.Cdl * Eeff.diff(time)
+        i_cap = self.Cdl * Eeff.diff(time) #approximation of dEeff/dt
         
         i = i_f + i_cap
 
@@ -136,7 +158,8 @@ class CatalyticModel:
             time: 1,
             Eapp: Edc,
             c_s: pybamm.div(pybamm.grad(c_s)) * self.d_S,
-            c_p: (pybamm.div(pybamm.grad(c_p)) * self.d_P),
+            c_p: pybamm.div(pybamm.grad(c_p)) * self.d_P,
+            c_p: (pybamm.div(pybamm.grad(c_p)) * self.d_P), #- self.k1*c_p,
         }
         
         # algebraic equations (none)
@@ -200,8 +223,9 @@ class CatalyticModel:
             "S(soln) at electrode [non-dim]": c_at_electrode_s,
             "P(soln) at electrode [non-dim]": c_at_electrode_p,
             "S(soln) [non-dim]": c_s,
+            "P(soln) [non-dim]": c_p
             "P(soln) [non-dim]": c_p,
-            # 'k0': self.k1,
+            'k0': self.k1,
         }
         
         # Set model parameters
@@ -261,6 +285,14 @@ class CatalyticModel:
             Ee_f = solution["Effective Voltage [non-dim]"](times_nd)
             current_f = solution["Current [non-dim]"](times_nd)
             
+            #removes the boundary conditions from the final output array (theoretically)
+            #don't know if the boundary conditions will be overwritten if an array of len 102 is used
+            cS = c_S_f[1:-1, -1]
+            cP = c_P_f[1:-1, -1]
+            yes =c_S_f[:, -1]
+            no = c_P_f[:, -1]
+            maybe = Ee_f[-1]
+            definitely = E_f[-1]
      
             self.model("backward", c_S_f[1:-1, -1], c_P_f[1:-1, -1], Ee_f[-1], E_f[-1])
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
@@ -271,7 +303,8 @@ class CatalyticModel:
             E_b = solution["Applied Voltage [non-dim]"](times_nd)
             Ee_b = solution["Effective Voltage [non-dim]"](times_nd)
             current_b = solution["Current [non-dim]"](times_nd)
-            # k00 = solution["k0"](times_nd)
+            k00 = solution["k0"](times_nd)
+            # print(k00)
             
             # print(current_f[-1], current_b[1])
             
@@ -288,6 +321,7 @@ class CatalyticModel:
             solution = np.zeros_like(times_nd)
         return (
             current, E,
+            c_S, c_P,
             cS, cP,
             times_nd,
         )
