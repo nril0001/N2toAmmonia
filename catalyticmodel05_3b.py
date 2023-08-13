@@ -45,8 +45,8 @@ class CatalyticModel:
         self.T_0 = self.E_0 * self.v #units are seconds-1
         self.X_0 = pybamm.sqrt((self.F*self.v)/(self.R*self.T*self.DS_d)) #units are cm
         #I_0 = (DS_d * F * a * CS_d)/ X_0  #units are A
-        self.I_0 = self.F*self.a*self.CS_d*pybamm.sqrt(self.DS_d)*pybamm.sqrt(self.T_0) #units are ampere-1
-        self.K_0 = (pybamm.sqrt(self.DS_d * self.T_0))/self.DS_d #units are s/cm
+        self.I_0 = self.F * self.a * self.DS_d * self.CS_d * pybamm.sqrt(self.T_0 / self.DS_d) #units are Amps
+        self.K_0 = (pybamm.sqrt(self.DS_d / self.T_0))/self.DS_d #units are s/cm
         #K_0 = a / Dmax
         #self.Cdl_0 = (self.a * self.I_0) / (self.E_0 * self.T_0) # cm2 V s A-1
         self.Cdl_0 = (self.I_0 * self.T_0) / self.E_0 #units are F-1 (V A-1 s-1)
