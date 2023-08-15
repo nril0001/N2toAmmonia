@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel05_3 as cm
+import catalyticmodel05_3_c as cm
 import numpy as np
 import time
 import matplotlib.pylab as plt
@@ -58,7 +58,7 @@ def main():
     Is = []
     for o in x:
         ti = time.time()
-        atol = 1e-12
+        atol = 1e-10
         rtol = 1e-8
         t_steps = 2**14
         x_steps = o
@@ -74,6 +74,7 @@ def main():
                 "Diffusion Coefficient of S [cm2 s-1]": i[9],
                 "Diffusion Coefficient of P [cm2 s-1]": i[9],
                 "Electrode Area [cm2]": 1,
+                "Electrode Radius [cm]": 1,
                 "Temperature [K]": 298,
                 "Voltage start [V]": 0.5,
                 "Voltage reverse [V]": -0.5,
@@ -109,7 +110,7 @@ def main():
                     curr.append(float(row[1]))
     
             #flipping current values from DigiElech
-            curr = np.array(curr) * -1
+            curr = np.array(curr) 
     
             # for unpacking DigiElech SCs
             potential = []
@@ -137,7 +138,7 @@ def main():
             current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
             
             ##redimensionalizing here for now. Messy to do in main, move later
-            I_d = current * cmodel._I_0 * -1
+            I_d = current / cmodel._I_0
             E_d = E_nd / cmodel._E_0
             # Es.append(E_d)
             # Is.append(I_d)
