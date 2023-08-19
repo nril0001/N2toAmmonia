@@ -47,11 +47,11 @@ class CatalyticModel:
         self.X_0 = 1/self.r #units are cm
         self.K_0 = self.r/self.DS_d #units are cm/s, heterogenous
         self.K_1 = self.r**2/self.DS_d #units are s, homogenous
-        self.C_0 = 1/self.CS_d
-        self.D_0 = 1/self.DS_d
+        self.C_0 = 1/self.CS_d # concentration
+        self.D_0 = 1/self.DS_d # diffusion
         self.E_0 = self.F / (self.R * self.T)  #units are V
-        self.V_0 = (self.r**2/self.DS_d)*(self.F / (self.R * self.T))
-        self.I_0 = 1/(np.pi*self.r*self.F*self.DS_d*self.CS_d)
+        self.V_0 = (self.r**2/self.DS_d)*(self.F / (self.R * self.T)) #scan rate
+        self.I_0 = 1/(np.pi*self.r*self.F*self.DS_d*self.CS_d)# current
         
         self.Cdl_0 = (self.E_0)/(self.I_0 * self.T_0) # V/A s
         self.Ru_0 = self.E_0/self.I_0 #units are Amps/V
@@ -84,6 +84,7 @@ class CatalyticModel:
         #max length of diffusion layer
         self.x_max = 6 * pybamm.sqrt(self.d_max * self.Tmax_nd) 
         
+        #scan rate
         self.V = self.V_0 * self.v
         
     def model(self, sweep="forward", Cs =None, Cp =None, Ee=None, Ea=None):
@@ -98,19 +99,19 @@ class CatalyticModel:
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(soln) [non-dim]", domain="solution")
         Eeff = pybamm.Variable("Effective Voltage [non-dim]")
-        Eapp = pybamm.Variable("Applied Voltage [non-dim]")
+        # Eapp = pybamm.Variable("Applied Voltage [non-dim]")
         time = pybamm.Variable("time [non-dim]")
         
         if sweep == "forward":
             Edc = -self.V
-            # Eapp = self.E_start - pybamm.t
+            Eapp = self.E_start - self.V * pybamm.t
             Cs = self.cs_nd
             Cp = self.cp_nd
             Ee = self.E_start
             Ea = self.E_start
         elif sweep == "backward":
             Edc = self.V
-            # Eapp = self.E_reverse + pybamm.t
+            Eapp = self.E_reverse + self.V * pybamm.t
             Cs = pybamm.Array(Cs, domain="solution")
             Cp = pybamm.Array(Cp, domain="solution")
             Ee = Ee 
@@ -134,9 +135,7 @@ class CatalyticModel:
         
         i = i_f
         
-        # i_cap = self.Cdl * Eeff.diff(time)
-        
-        # i_cap = self.Cdl
+        i_cap = self.Cdl_d * Eapp.diff(pybamm.t)
         
         
         # if sweep == "forward":
@@ -151,8 +150,8 @@ class CatalyticModel:
         #dividing by their own coefficients
         model.rhs = {
             time: 1,
-            Eapp: Edc,
-            c_s: pybamm.div(pybamm.grad(c_s)) * self.d_S,
+            # Eapp: Edc,
+            c_s: (pybamm.div(pybamm.grad(c_s)) * self.d_S),
             c_p: (pybamm.div(pybamm.grad(c_p)) * self.d_P),
         }
         
@@ -178,7 +177,7 @@ class CatalyticModel:
             c_s: Cs,
             c_p: Cp,
             Eeff: Ee,
-            Eapp: Ea,
+            # Eapp: Ea,
             time: t
         }
 
@@ -220,7 +219,9 @@ class CatalyticModel:
             "S(soln) [non-dim]": c_s,
             "P(soln) [non-dim]": c_p,
             # "E0": self.E0
-            'k0': self.k0,
+            'i_cap': i_cap,
+            # 'dEdt': Eapp.diff(pybamm.t),
+            
         }
         
         # Set model parameters
@@ -273,46 +274,29 @@ class CatalyticModel:
         print("Number of spacesteps: " + str(self._x))
         try:
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
-            c_S_f = solution["S(soln) [non-dim]"](times_nd)
-            c_P_f = solution["P(soln) [non-dim]"](times_nd)
-            cS_f = solution["S(soln) at electrode [non-dim]"](times_nd)
-            cP_f = solution["P(soln) at electrode [non-dim]"](times_nd)
-            E_f = solution["Applied Voltage [non-dim]"](times_nd)
-            Ee_f = solution["Effective Voltage [non-dim]"](times_nd)
-            current_f = solution["Current [non-dim]"](times_nd)
+            c_S = solution["S(soln) [non-dim]"](times_nd)
+            c_P = solution["P(soln) [non-dim]"](times_nd)
+            cS = solution["S(soln) at electrode [non-dim]"](times_nd)
+            cP = solution["P(soln) at electrode [non-dim]"](times_nd)
+            E = solution["Applied Voltage [non-dim]"](times_nd)
+            Ee = solution["Effective Voltage [non-dim]"](times_nd)
+            current = solution["Current [non-dim]"](times_nd)
             time = solution["time [non-dim]"](times_nd)
+            i_cap = solution["i_cap"](times_nd)
+            # dedt = solution["dEdt"](times_nd)
             
      
-            self.model("backward", c_S_f[1:-1, -1], c_P_f[1:-1, -1], Ee_f[-1], E_f[-1])
-            solution = self._solver.solve(self._model, times_nd, inputs=parameters)
-            c_S_b = solution["S(soln) [non-dim]"](times_nd)
-            c_P_b = solution["P(soln) [non-dim]"](times_nd)
-            cS_b = solution["S(soln) at electrode [non-dim]"](times_nd)
-            cP_b = solution["P(soln) at electrode [non-dim]"](times_nd)
-            E_b = solution["Applied Voltage [non-dim]"](times_nd)
-            Ee_b = solution["Effective Voltage [non-dim]"](times_nd)
-            current_b = solution["Current [non-dim]"](times_nd)
-            k00 = solution["k0"](times_nd)
-            print(k00)
-            
-            # print(current_f[-1], current_b[1])
-            
-            c_S = np.concatenate((c_S_f, c_S_b))
-            c_P = np.concatenate((c_P_f, c_P_b))
-            cS = np.concatenate((cS_f, cS_b))
-            cP = np.concatenate((cP_f, cP_b))
-            E = np.concatenate((E_f, E_b))
-            Ee = np.concatenate((Ee_f, Ee_b))
-            current = np.concatenate((current_f, current_b))
-            
-            # c_S = c_S_f
-            # c_P = c_P_f
-            # cS = cS_f
-            # cP = cP_f
-            # E = E_f
-            # Ee = Ee_f
-            # current = current_f
-            # current = solution["time [non-dim]"](times_nd)
+            # self.model("backward", c_S[1:-1, -1], c_P[1:-1, -1], Ee[-1], E[-1])
+            # solution = self._solver.solve(self._model, times_nd, inputs=parameters)
+            # c_S = np.concatenate((c_S, solution["S(soln) [non-dim]"](times_nd)))
+            # c_P = np.concatenate((c_P, solution["P(soln) [non-dim]"](times_nd)))
+            # cS = np.concatenate((cS, solution["S(soln) at electrode [non-dim]"](times_nd)))
+            # cP = np.concatenate((cP, solution["P(soln) at electrode [non-dim]"](times_nd)))
+            # E = np.concatenate((E, solution["Applied Voltage [non-dim]"](times_nd)))
+            # Ee = np.concatenate((Ee, solution["Effective Voltage [non-dim]"](times_nd)))
+            # current = np.concatenate((current, solution["Current [non-dim]"](times_nd)))
+            # k00 = solution["k0"](times_nd)
+            # print(k00)
             
         except pybamm.SolverError as e:
             print(e)
@@ -320,7 +304,7 @@ class CatalyticModel:
         return (
             current, E,
             cS, cP,
-            times,
+            times, i_cap
         )
 
 #TODO: Make a redimensionalise function

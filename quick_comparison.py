@@ -18,8 +18,8 @@ def main():
 
     #folder pathway - needs to be set to read all txt files that want analysed
     #use same naming conventions for text files as files in GammaTemp Variation
-    pathway1 = "DigiElech/2023-08-11 small k0/CV/"
-    pathway2 = "DigiElech/2023-08-11 small k0/SC/"
+    pathway1 = "DigiElech/2023-08-15 small k0 no RC/CV/"
+    pathway2 = "DigiElech/2023-08-15 small k0 no RC/SC/"
     output = "output/"+folder+"/"
 
     if os.path.isdir(output) == 0:
@@ -52,13 +52,15 @@ def main():
             t.append(variables[l])
             
     x = [100]
+    area = 1
+    radius = np.sqrt(area/np.pi)
     Os = []
     Rs = []
     Es = []
     Is = []
     for o in x:
         ti = time.time()
-        atol = 1e-10
+        atol = 1e-12
         rtol = 1e-8
         t_steps = 2**14
         x_steps = o
@@ -74,7 +76,7 @@ def main():
                 "Diffusion Coefficient of S [cm2 s-1]": i[9],
                 "Diffusion Coefficient of P [cm2 s-1]": i[9],
                 "Electrode Area [cm2]": 1,
-                "Electrode Radius [cm]": 1,
+                "Electrode Radius [cm]": radius,
                 "Temperature [K]": 298,
                 "Voltage start [V]": 0.5,
                 "Voltage reverse [V]": -0.5,
@@ -90,8 +92,8 @@ def main():
                 "Catalytic Rate For [cm2 mol-l s-1]": 0,
                 "Catalytic Rate Back [cm2 mol-l s-1]": 0,
                 "Symmetry factor [non-dim]": 0.5,
-                "Uncompensated Resistance [Ohm]": i[7],
-                "Capacitance [F]": i[8],
+                "Uncompensated Resistance [Ohm]": 1,
+                "Capacitance [F]": 1,
             }
             
             # for unpacking DigiElech CVs

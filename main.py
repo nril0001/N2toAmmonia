@@ -54,9 +54,9 @@ def main():
     
     curr = np.array(curr)
     
-    k0 = 0.001
-    Ru = 250
-    Cdl = 0
+    k0 = 1
+    Ru = 1
+    Cdl = 1
     atol = 1e-12
     rtol = 1e-8
     t_steps = 2**14
@@ -98,13 +98,13 @@ def main():
     # current, E_nd, O_nd, R_nd, S_nd, P_nd, T_nd = cmodel.simulate(input_parameters)
     # E_nd, T_nd = cmodel.simulate(input_parameters)
     # current, E_nd, T_nd = cmodel.simulate(input_parameters)
-    current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
+    current, E_nd, O_nd, R_nd, T_nd, i_cap = cmodel.simulate(input_parameters)
     # simulating analytical solution
     #I_ana_nd = amodel.simulate(E_nd)
     ##redimensionalizing here for now. Messy to do in main, move later
     I_d = current / cmodel._I_0
     E_d = E_nd / cmodel._E_0
-    print(cmodel._E_0)
+    print(i_cap)
 
     #I_ana_d = I_ana_nd *cmodel._I_0
     #print(k0[0])
