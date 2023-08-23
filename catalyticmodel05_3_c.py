@@ -42,19 +42,19 @@ class CatalyticModel:
         self.Cdl_d = pybamm.InputParameter("Capacitance [F]")
         self.Ru_d = pybamm.InputParameter("Uncompensated Resistance [Ohm]")
 
-        # Create scaling factors   for non-dimensionalisation
-        self.T_0 = self.DS_d/self.r**2 #units are seconds
-        self.X_0 = 1/self.r #units are cm
-        self.K_0 = self.r/self.DS_d #units are cm/s, heterogenous
-        self.K_1 = self.r**2/self.DS_d #units are s, homogenous
-        self.C_0 = 1/self.CS_d # concentration
-        self.D_0 = 1/self.DS_d # diffusion
-        self.E_0 = self.F / (self.R * self.T)  #units are V
-        self.V_0 = (self.r**2/self.DS_d)*(self.F / (self.R * self.T)) #scan rate
-        self.I_0 = 1/(np.pi*self.r*self.F*self.DS_d*self.CS_d)# current
+        # Create scaling factors for non-dimensionalisation
+        self.T_0 = self.DS_d/self.r**2 # time, units in s
+        self.X_0 = 1/self.r # distance, units in cm
+        self.K_0 = self.r/self.DS_d # heterogeneous rate constant, units in s cm-1
+        self.K_1 = self.r**2/self.DS_d #homogenous rate constant, units in s-1
+        self.C_0 = 1/self.CS_d # concentration, units in cm3 mol-1
+        self.D_0 = 1/self.DS_d # diffusion, units in s cm-2
+        self.E_0 = self.F / (self.R * self.T) # potential, units in V-1
+        self.V_0 = (self.r**2/self.DS_d)*(self.F / (self.R * self.T)) # scan rate, units in s V-1
+        self.I_0 = 1/(np.pi*self.r*self.F*self.DS_d*self.CS_d) # current, units in A-1
         
-        self.Cdl_0 = (self.E_0)/(self.I_0 * self.T_0) # V/A s
-        self.Ru_0 = self.E_0/self.I_0 #units are Amps/V
+        self.Cdl_0 = (self.E_0)/(self.I_0 * self.T_0) # capacitance, units in V s A-1
+        self.Ru_0 = self.E_0/self.I_0 # resistance, units in A V-1
         
         # Non-dimensionalise parameters
         self.E0 = self.E0_d * self.E_0 #no units
