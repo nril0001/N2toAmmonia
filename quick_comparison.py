@@ -18,8 +18,10 @@ def main():
 
     #folder pathway - needs to be set to read all txt files that want analysed
     #use same naming conventions for text files as files in GammaTemp Variation
-    pathway1 = "DigiElech/2023-08-15 small k0 no RC/CV/"
-    pathway2 = "DigiElech/2023-08-15 small k0 no RC/SC/"
+    # pathway1 = "DigiElech/2023-08-23 diffusion only comparison/CV/0 Ru/adjustment/"
+    # pathway2 = "DigiElech/2023-08-23 diffusion only comparison/SC/0 Ru/adjustment/"
+    pathway1 = "DigiElech/2023-08-23 diffusion only comparison/CV/500 Ru/"
+    pathway2 = "DigiElech/2023-08-23 diffusion only comparison/SC/500 Ru/"
     output = "output/"+folder+"/"
 
     if os.path.isdir(output) == 0:
@@ -51,7 +53,7 @@ def main():
             variables[l] = float(variables[l])
             t.append(variables[l])
             
-    x = [100]
+    x = [500]
     area = 1
     radius = np.sqrt(area/np.pi)
     Os = []
@@ -60,9 +62,9 @@ def main():
     Is = []
     for o in x:
         ti = time.time()
-        atol = 1e-12
-        rtol = 1e-8
-        t_steps = 2**14
+        atol = 1e-5
+        rtol = 1e-3
+        t_steps = 2**(10)
         x_steps = o
         
         for i in files_cv:
@@ -75,25 +77,28 @@ def main():
                 "Far-field concentration of P(soln) [mol cm-3]": 0,
                 "Diffusion Coefficient of S [cm2 s-1]": i[9],
                 "Diffusion Coefficient of P [cm2 s-1]": i[9],
+                "Diffusion Layer Thickness [cm]": 1,
                 "Electrode Area [cm2]": 1,
                 "Electrode Radius [cm]": radius,
+                "Electrode Coverage [mol cm-2]": 1e-12,
                 "Temperature [K]": 298,
                 "Voltage start [V]": 0.5,
                 "Voltage reverse [V]": -0.5,
                 "Voltage amplitude [V]": 0.0,
                 "Scan Rate [V s-1]": i[10],
-                "Electrode Coverage [mol cm-2]": 1e-12,
             }
     
             #conditions that will change often over the course of testing     
             input_parameters = {
                 "Reversible Potential [V]": 0.0,
                 "Redox Rate [cm s-1]": i[6],
+                "Adsorption Rate [mol-1 cm3 s-1]": 0,
+                "Desorption Rate [mol-1 cm3 s-1]": 0,
                 "Catalytic Rate For [cm2 mol-l s-1]": 0,
                 "Catalytic Rate Back [cm2 mol-l s-1]": 0,
                 "Symmetry factor [non-dim]": 0.5,
-                "Uncompensated Resistance [Ohm]": 1,
-                "Capacitance [F]": 1,
+                "Uncompensated Resistance [Ohm]": i[7],
+                "Capacitance [F]": i[8],
             }
             
             # for unpacking DigiElech CVs
@@ -135,9 +140,7 @@ def main():
             cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps, x_steps)
             title = i[0].split("/")
             heading = files_sc[files_cv.index(i)][0].split("/")
-            print(title[3])
-            print(heading[3])
-            current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
+            current, E_nd, O_nd, R_nd, T_nd, i_cap = cmodel.simulate(input_parameters)
             
             ##redimensionalizing here for now. Messy to do in main, move later
             I_d = current / cmodel._I_0
@@ -151,13 +154,13 @@ def main():
             plt.cla()
             plt.plot(E_d[1:], (I_d[1:]), color = "red", label="PyBamm")
             plt.plot(voltage, np.array(-curr), color = 'blue', linestyle = 'dashdot', label = 'Digielch')
-            plt.title("CV: K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_Ds_"+str(i[9])+"_Dp_"+str(i[9]) + "_SR_" + str(i[10]) )
+            plt.title("CV: K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_D_"+str(i[9])+ "_SR_" + str(i[10]) )
             plt.xlabel("Potential [V]")
             plt.ylabel("Current [A]")
             plt.legend()
             plt.grid()
-            plt.savefig(output+"CV/CV_cat05_dim_K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_Ds_"+str(i[9])+"_Dp_"+str(i[9]) + "_SR_" + str(i[10])+".png", dpi=600)
-            np.savetxt(output+"CV/CV_cat05_dim_K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_Ds_"+str(i[9])+"_Dp_"+str(i[9]) + "_SR_" + str(i[10])+".dat", np.transpose(np.vstack((E_d, I_d))))
+            plt.savefig(output+"CV/CV_cat05_dim_K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_D_"+str(i[9]) + "_SR_" + str(i[10])+".png", dpi=600)
+            np.savetxt(output+"CV/CV_cat05_dim_K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_D_"+str(i[9]) + "_SR_" + str(i[10])+".dat", np.transpose(np.vstack((E_d, I_d))))
         
             # Plot concentration 
             plt.cla()
@@ -165,13 +168,13 @@ def main():
             plt.plot(E_d, (R_nd), color = "orange", label="PyBamm - P")
             plt.plot(potential[:401], np.array(surfcon[:401])/surfcon[0], color = 'blue', linestyle = 'dashdot', label = 'Digielch - S')
             plt.plot(potential[401:], np.array(surfcon[401:])/surfcon[0], color = 'green', linestyle = 'dashdot', label = 'Digielch - P')
-            plt.title("Norm SC: K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_Ds_"+str(i[9])+"_Dp_"+str(i[9]) + "_SR_" + str(i[10]) )
+            plt.title("Norm SC: K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_D_"+str(i[9]) + "_SR_" + str(i[10]) )
             plt.xlabel("Potential [V]")
             plt.ylabel("Surface Coverage [non-dim]")
             plt.legend()
             plt.grid()
-            plt.savefig(output+"SC/SC_cat05_dim_K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_Ds_"+str(i[9])+"_Dp_"+str(i[9]) + "_SR_" + str(i[10])+".png", dpi=600)
-            np.savetxt(output+"SC/SC_cat05_dim_K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_Ds_"+str(i[9])+"_Dp_"+str(i[9]) + "_SR_" + str(i[10])+".dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
+            plt.savefig(output+"SC/SC_cat05_dim_K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_D_"+str(i[9]) + "_SR_" + str(i[10])+".png", dpi=600)
+            np.savetxt(output+"SC/SC_cat05_dim_K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_D_"+str(i[9]) + "_SR_" + str(i[10])+".dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
             
             print("complete in time: " + str((time.time()-ti)/60) + " minutes")       
     
@@ -194,5 +197,3 @@ if __name__ =='__main__':
     #Timer to measure performance
 
     main()
-    
-    # print("complete in time: " + str((time.time()-ti)/60) + " minutes")
