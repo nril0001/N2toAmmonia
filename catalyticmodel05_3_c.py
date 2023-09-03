@@ -220,11 +220,9 @@ class CatalyticModel:
         
         # Create solver
         # model.convert_to_format = 'python'
-        # solver = pybamm.ScikitsDaeSolver(method="ida", atol=self.atoler, rtol=self.rtoler, root_method="casadi", root_tol=1e-8)
-        solver = pybamm.ScikitsDaeSolver(method="ida", atol=self.atoler, rtol=self.rtoler)
-        # model.convert_to_format = 'casadi'
-        # solver = pybamm.IDAKLUSolver(atol=atoler, rtol=rtoler)
-        # solver = pybamm.CasadiSolver(mode='fast', rtol=rtoler, atol=atoler, root_method='casadi')
+        # solver = pybamm.ScikitsDaeSolver(method="ida", atol=self.atoler, rtol=self.rtoler)
+        model.convert_to_format = 'casadi'
+        solver = pybamm.CasadiSolver(mode='fast', rtol=self.rtoler, atol=self.atoler, root_method="casadi")
     
         # Store discretised model and solver
         self._model = model
@@ -254,7 +252,7 @@ class CatalyticModel:
         self.model("forward")
         times_nd = np.linspace(0, self._Tmax_nd, int(self._m)//2)
         times = np.linspace(0, self._Tmax_nd*2, int(self._m))
-        print("Number of timesteps: " + str(self._m))
+        print("Number of timesteps: " + str(self._m//2))
         print("Number of spacesteps: " + str(self._x))
         try:
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
@@ -277,15 +275,12 @@ class CatalyticModel:
             E = np.concatenate((E, solution["Applied Voltage [non-dim]"](times_nd)))
             Ee = np.concatenate((Ee, solution["Effective Voltage [non-dim]"](times_nd)))
             current = np.concatenate((current, solution["Current [non-dim]"](times_nd)))
-            
+        
         except pybamm.SolverError as e:
             print(e)
             solution = np.zeros_like(times_nd)
-        return (
-            current, E,
-            cS, cP,
-            times, i_cap
-        )
+            
+        return (current, E, cS, cP, times, i_cap)
 
 #TODO: Make a redimensionalise function
     # nd_sol are nondimensional solutions

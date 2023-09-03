@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel05_3_c as cm
+import catalyticmodel06 as cm
 import time
 import re
 import matplotlib.pylab as plt
@@ -7,6 +7,7 @@ import os
 from datetime import date
 import numpy as np
 from scipy.signal import savgol_filter
+import gc
 
 
 def main():
@@ -26,7 +27,7 @@ def main():
         os.mkdir(output+"SC", 0o666)
         os.mkdir(output+"CV", 0o666)
     
-    files = [['DigiElech/2023-08-23 diffusion only comparison/CV/250 Ru/adjustment/CV_k0_1e3_R_250_Cd_0_Ds_1e-5_v_1.txt', 1e-3, 1e-5]]
+    files = [['DigiElech/2023-08-23 diffusion only comparison/CV/0 Ru/CV_k0_1e3_R_0_Cd_0_Ds_1e-5_v_4e-1.txt', 1e-3, 1e-5]]
     
     # retrieve variables from file pathway
     for t in files:
@@ -55,13 +56,13 @@ def main():
     
     curr = np.array(curr)
     
-    k0 = 1000
+    k0 = 1e10
     Ru = 250
     Cdl = 0
-    atol = 1e-5
-    rtol = 1e-3
-    t_steps = 2**10
-    x_steps = 500
+    atol = 1e-6
+    rtol = 1e-6
+    t_steps = [2**(9)]
+    x_steps = [2000]
     area = 1
     radius = np.sqrt(area/np.pi)
     
@@ -69,46 +70,70 @@ def main():
     const_parameters = {
         "Faraday Constant [C mol-1]": 96485.3328959,
         "Gas constant [J K-1 mol-1]": 8.314459848,
-        "Far-field concentration of S(soln) [mol cm-3]": 1e-6,
+        "Far-field concentration of S(soln) [mol cm-3]": 1e-8,
         "Far-field concentration of P(soln) [mol cm-3]": 0,
+        "Surface coverage of S [mol cm-2]": 0,
+        "Surface coverage of P [mol cm-2]": 0,
+        "Electrode Coverage [mol cm-2]": 1.7e-9,
         "Diffusion Coefficient of S [cm2 s-1]": 1e-5,
         "Diffusion Coefficient of P [cm2 s-1]": 1e-5,
         "Diffusion Layer Thickness [cm]": 1,
         "Electrode Area [cm2]": 1,
         "Electrode Radius [cm]": radius,
-        "Electrode Coverage [mol cm-2]": 1e-12,
         "Temperature [K]": 298.2,
         "Voltage start [V]": 0.5,
         "Voltage reverse [V]": -0.5,
-        "Voltage amplitude [V]": .0,
+        "Voltage amplitude [V]": 0.0,
         "Scan Rate [V s-1]": 1,
+        "Uncompensated Resistance [Ohm]": Ru,
+        "Capacitance [F]": Cdl, #1e-8,
     }
     
     #conditions that will change often over the course of testing
     input_parameters = {
         "Reversible Potential [V]": 0,
         "Redox Rate [cm s-1]": k0,
+        "Redox Rate (ads) [cm s-1]": k0,
+        "Redox Rate (sol) [cm s-1]": k0,
+        "Electrosorption Rate [mol-1 cm3 s-1]": k0,
+        "Adsorption Rate [mol-1 cm3 s-1]": 0,
+        "Desorption Rate [s-1]": 0,
         "Catalytic Rate For [cm2 mol-l s-1]": 1000*1000,
         "Catalytic Rate Back [cm2 mol-l s-1]": 1000*1000,
         "Symmetry factor [non-dim]": 0.5,
-        "Uncompensated Resistance [Ohm]": Ru,
-        "Capacitance [F]": Cdl, #1e-8,
+        
     }
     
-    #setting main model to reference CatalyticModel class
-    cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps, x_steps)
-    #e, c = aa.AnalyticalModel(100)
-    #setting solved answers to ones usable here
-    # current, E_nd, O_nd, R_nd, S_nd, P_nd, T_nd = cmodel.simulate(input_parameters)
-    # E_nd, T_nd = cmodel.simulate(input_parameters)
-    # current, E_nd, T_nd = cmodel.simulate(input_parameters)
-    current, E_nd, O_nd, R_nd, T_nd, i_cap = cmodel.simulate(input_parameters)
-    # simulating analytical solution
-    #I_ana_nd = amodel.simulate(E_nd)
-    ##redimensionalizing here for now. Messy to do in main, move later
-    I_d = current / cmodel._I_0
-    E_d = E_nd / cmodel._E_0
-    I_d = savgol_filter(I_d, 11, 3)
+    E_ds = []
+    I_ds = []
+    
+    
+    for o in x_steps:
+        #setting main model to reference CatalyticModel class
+        cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps[0], o)
+        #e, c = aa.AnalyticalModel(100)
+        #setting solved answers to ones usable here
+        # current, E_nd, O_nd, R_nd, S_nd, P_nd, T_nd = cmodel.simulate(input_parameters)
+        # E_nd, T_nd = cmodel.simulate(input_parameters)
+        # current, E_nd, T_nd = cmodel.simulate(input_parameters)
+        current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
+        xss = o
+        tss = t_steps[0]
+        while len(E_nd) == tss/2:
+            xss = xss + 2
+            tss = tss + 2
+            cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, tss, xss)
+            current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
+        
+        # simulating analytical solution
+        #I_ana_nd = amodel.simulate(E_nd)
+        ##redimensionalizing here for now. Messy to do in main, move later
+        I_d = current / cmodel._I_0
+        E_d = E_nd / cmodel._E_0
+        E_ds.append(E_d)
+        I_ds.append(I_d)
+        
+        print("complete in time: " + str((time.time()-ti)/60) + " minutes")       
 
     #I_ana_d = I_ana_nd *cmodel._I_0
     #print(k0[0])
@@ -118,34 +143,32 @@ def main():
     
     # Plot current
     plt.cla()
-    plt.plot(volt, np.array(-curr), color = 'orange', linestyle = 'dashdot', label = 'Digielch')
-    plt.plot(E_d, I_d, color = 'Red', label = 'Pybamm', linestyle='dashed')
-    # plt.plot(T_nd, R_nd, color = 'Red', label = 'Pybamm', linestyle='dashed')
+    # for u in range(len(E_ds)):    
+    #     plt.plot(E_ds[u], I_ds[u], label=str(x_steps[u]) + "- S")   
+    # plt.plot(volt, np.array(-curr), color = 'orange', linestyle = 'dashdot', label = 'Digielch')
+    # plt.plot(E_d, O_nd, color = 'Red', label = 'Pybamm', linestyle='dashed')
+    # plt.plot(E_d, R_nd, color = 'Blue', label = 'Pybamm', linestyle='dashed')
+    # plt.plot(E_d, I_d / cmodel._I_0, color = 'Blue', label = 'Pybamm', linestyle='dashed')
+    plt.plot(E_nd, O_nd, color = 'Red', label = 'Pybamm', linestyle='dashed')
     plt.xlabel("Eapp [V]")
     plt.ylabel("Current [A]")
     plt.legend()
     plt.grid()
-    plt.savefig(output+"CV_cat04_dim.png", dpi=1200)
+    plt.savefig(output+"CV_cat04_dim.png", dpi=1000)
     # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
     
-    # plt.cla()
-    # plt.plot(T_nd, capa, color = 'Red', label = 'Pybamm', linestyle='dashed')
-    # plt.xlabel("Time [s]")
-    # plt.ylabel("Eapp [V]")
-    # plt.legend()
-    # plt.grid()
     
-    #Plot concentration profiles
+    # #Plot concentration profiles
     # plt.cla()
-    # plt.plot(volt[:398], np.array(curr[:398])/curr[0], color = 'orange', linestyle = 'dashdot', label = 'Digielch - S')
-    # plt.plot(volt[399:], np.array(curr[399:])/curr[0], color = 'green', linestyle = 'dashdot', label = 'Digielch - P')
+    # # # plt.plot(volt[:398], np.array(curr[:398])/curr[0], color = 'orange', linestyle = 'dashdot', label = 'Digielch - S')
+    # # # plt.plot(volt[399:], np.array(curr[399:])/curr[0], color = 'green', linestyle = 'dashdot', label = 'Digielch - P')
     # plt.plot(E_d[1:], O_nd[1:], color = 'Red', label = 'S', linestyle='dashed')
     # plt.plot(E_d[1:], R_nd[1:], color = 'Blue', label = 'P', linestyle='dashed')
     # plt.xlabel("Eapp [V]")
     # plt.ylabel("Surface Coverage [non-dim]")
     # plt.legend()
     # plt.grid()
-    #plt.savefig(output+"CV_cat04_dim.png")
+    # plt.savefig(output+"CV_cat04_dim.png")
     # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
     
     return
@@ -156,10 +179,3 @@ if __name__ =='__main__':
 
     main()
     
-
-    #literally just to test that that main is working properly (delete later)
-    print("complete in time: " + str((time.time()-ti)/60) + " minutes")
-
-    #TODO: add multiple fxns for running models at the same time
-    #TODO: improve plotting for pybamm based models: investigate using pybamm's plotting features??
-    #TODO: LOW PRIORITY make compatible with interactive plottersz

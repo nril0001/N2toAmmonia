@@ -14,15 +14,17 @@ def main():
     seioptions = ()
     
     #retrieve date
-    today = date.today()
-    folder = today.strftime("%Y%m%d")
+    # today = date.today()
+    # folder = today.strftime("%Y%m%d")
     
     #folder pathway - needs to be set to read all txt files that want analysed
     #use same naming conventions for text files as files in GammaTemp Variation
-    output = "output/"+folder+"/"
+    # output = "output/"+folder+"/"
     
-    if os.path.isdir(output) == 0:
-        os.mkdir(output, 0o666)
+    # if os.path.isdir(output) == 0:
+    #     os.mkdir(output, 0o666)
+    #     os.mkdir(output+"SC", 0o666)
+    #     os.mkdir(output+"CV", 0o666)
         
     
     files = [['DigiElech/2023-06-13 Surface only/RC ONLY/CV_k0_1e6_kf_0_kb_0_R_3e5_Cd_5.4e-7_Ds_0_Dp_0.txt']]

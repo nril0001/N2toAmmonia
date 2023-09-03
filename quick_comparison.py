@@ -1,11 +1,13 @@
 ## Main function
-import catalyticmodel05_3_c as cm
+import catalyticmodel06 as cm
 import numpy as np
 import time
 import matplotlib.pylab as plt
 import re
 import os
 from datetime import date
+# import gc
+import random
 
 
 def main():
@@ -18,10 +20,8 @@ def main():
 
     #folder pathway - needs to be set to read all txt files that want analysed
     #use same naming conventions for text files as files in GammaTemp Variation
-    # pathway1 = "DigiElech/2023-08-23 diffusion only comparison/CV/0 Ru/adjustment/"
-    # pathway2 = "DigiElech/2023-08-23 diffusion only comparison/SC/0 Ru/adjustment/"
-    pathway1 = "DigiElech/2023-08-23 diffusion only comparison/CV/500 Ru/"
-    pathway2 = "DigiElech/2023-08-23 diffusion only comparison/SC/500 Ru/"
+    pathway1 = "DigiElech/2023-08-23 diffusion only comparison/CV/101 Test/"
+    pathway2 = "DigiElech/2023-08-23 diffusion only comparison/SC/101 Test/"
     output = "output/"+folder+"/"
 
     if os.path.isdir(output) == 0:
@@ -53,7 +53,7 @@ def main():
             variables[l] = float(variables[l])
             t.append(variables[l])
             
-    x = [500]
+    x = [2000]
     area = 1
     radius = np.sqrt(area/np.pi)
     Os = []
@@ -62,9 +62,9 @@ def main():
     Is = []
     for o in x:
         ti = time.time()
-        atol = 1e-5
-        rtol = 1e-3
-        t_steps = 2**(10)
+        atol = 1e-6
+        rtol = 1e-6
+        t_steps = 2**(8)
         x_steps = o
         
         for i in files_cv:
@@ -86,19 +86,22 @@ def main():
                 "Voltage reverse [V]": -0.5,
                 "Voltage amplitude [V]": 0.0,
                 "Scan Rate [V s-1]": i[10],
+                "Uncompensated Resistance [Ohm]": i[7],
+                "Capacitance [F]": i[8],
             }
     
             #conditions that will change often over the course of testing     
             input_parameters = {
                 "Reversible Potential [V]": 0.0,
                 "Redox Rate [cm s-1]": i[6],
+                "Redox Rate (ads) [s-1]": i[6],
+                "Redox Rate (sol) [cm s-1]": i[6],
+                "Electrosorption Rate [mol-1 cm3 s-1]": i[6],
                 "Adsorption Rate [mol-1 cm3 s-1]": 0,
-                "Desorption Rate [mol-1 cm3 s-1]": 0,
+                "Desorption Rate [s-1]": 0,
                 "Catalytic Rate For [cm2 mol-l s-1]": 0,
                 "Catalytic Rate Back [cm2 mol-l s-1]": 0,
                 "Symmetry factor [non-dim]": 0.5,
-                "Uncompensated Resistance [Ohm]": i[7],
-                "Capacitance [F]": i[8],
             }
             
             # for unpacking DigiElech CVs
@@ -141,12 +144,18 @@ def main():
             title = i[0].split("/")
             heading = files_sc[files_cv.index(i)][0].split("/")
             current, E_nd, O_nd, R_nd, T_nd, i_cap = cmodel.simulate(input_parameters)
+            while len(E_nd) == t_steps/2:
+                x_steps = x_steps + 2
+                cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps, x_steps)
+                current, E_nd, O_nd, R_nd, T_nd, i_cap = cmodel.simulate(input_parameters)
+            
+            x_steps = o
             
             ##redimensionalizing here for now. Messy to do in main, move later
             I_d = current / cmodel._I_0
             E_d = E_nd / cmodel._E_0
-            # Es.append(E_d)
-            # Is.append(I_d)
+            Es.append(E_d)
+            Is.append(I_d)
             # Os.append(O_nd)
             # Rs.append(R_nd)
          
@@ -175,10 +184,11 @@ def main():
             plt.grid()
             plt.savefig(output+"SC/SC_cat05_dim_K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_D_"+str(i[9]) + "_SR_" + str(i[10])+".png", dpi=600)
             np.savetxt(output+"SC/SC_cat05_dim_K0_" + str(i[6]) + "_Ru_"+str(i[7]) +"_Cd_"+str(i[8]) + "_D_"+str(i[9]) + "_SR_" + str(i[10])+".dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
+            # gc.collect()
             
             print("complete in time: " + str((time.time()-ti)/60) + " minutes")       
     
-    #normalising the concentrations
+    # normalising the concentrations
     # plt.cla()
     # for u in range(len(Es)):    
     #     plt.plot(Es[u], (Os[u]), label=str(x[u]) + "- S")
@@ -190,7 +200,9 @@ def main():
     # plt.ylabel("Surface Coverage [non-dim]")
     # plt.legend()
     # plt.grid()
-    # plt.savefig(output+"Conc_S&P_cat05_dim_ko_"+str(i[5])+"_Ds_"+str(i[6])+"_Dp_"+str(i[7])+"._x_steps.png", dpi=600)    
+    # plt.savefig(output+"Conc_S&P_cat05_dim_ko_"+str(i[5])+"_Ds_"+str(i[6])+"_Dp_"+str(i[7])+"._x_steps.png", dpi=600) 
+    
+    
     return
 
 if __name__ =='__main__':
