@@ -45,6 +45,8 @@ class CatalyticModel:
         self.E0_d = pybamm.InputParameter("Reversible Potential [V]")
         self.k0_d = pybamm.InputParameter("Electrosorption Rate [mol-1 cm3 s-1]")
         self.alpha = pybamm.InputParameter("Symmetry factor [non-dim]")
+        self.G = pybamm.InputParameter("G")
+        self.G_ = pybamm.InputParameter("G'")
         
 
         # Create scaling factors for non-dimensionalisation
@@ -140,15 +142,15 @@ class CatalyticModel:
 
         # defining boundary values for S
         c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
-        dOdx = - pybamm.BoundaryGradient(c_s, "left")
+        dOdx = pybamm.BoundaryGradient(c_s, "left")
 
         BV_red = self.BV_red(Eeff, self.E0)
         BV_ox = self.BV_ox(Eeff, self.E0)
 
         # Faradaic current (Butler Volmer)
-        BV = self.k0 * ((c_at_electrode_s * (a_sites) *  BV_red) - (c_p * BV_ox))  
+        BV = self.k0 * ((c_at_electrode_s * (a_sites) *  BV_red *pybamm.exp((-self.G_)*c_p)) - (c_p * BV_ox*pybamm.exp((self.G-self.G_)*c_p))) 
         
-        i_f = dOdx
+        i_f = -dOdx
         
         i_cap = self.Cdl * self.V
         

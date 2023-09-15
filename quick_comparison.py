@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel06 as cm
+import catalyticmodel05_3_c as cm
 import numpy as np
 import time
 import matplotlib.pylab as plt
@@ -53,7 +53,7 @@ def main():
             variables[l] = float(variables[l])
             t.append(variables[l])
             
-    x = [2000]
+    x = [500]
     area = 1
     radius = np.sqrt(area/np.pi)
     Os = []
@@ -75,6 +75,8 @@ def main():
                 "Gas constant [J K-1 mol-1]": 8.314459848,
                 "Far-field concentration of S(soln) [mol cm-3]": 1e-6,
                 "Far-field concentration of P(soln) [mol cm-3]": 0,
+                "Surface coverage of S [mol cm-2]": 0,
+                "Surface coverage of P [mol cm-2]": 0,
                 "Diffusion Coefficient of S [cm2 s-1]": i[9],
                 "Diffusion Coefficient of P [cm2 s-1]": i[9],
                 "Diffusion Layer Thickness [cm]": 1,
@@ -143,11 +145,11 @@ def main():
             cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps, x_steps)
             title = i[0].split("/")
             heading = files_sc[files_cv.index(i)][0].split("/")
-            current, E_nd, O_nd, R_nd, T_nd, i_cap = cmodel.simulate(input_parameters)
+            current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
             while len(E_nd) == t_steps/2:
                 x_steps = x_steps + 2
-                cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps, x_steps)
-                current, E_nd, O_nd, R_nd, T_nd, i_cap = cmodel.simulate(input_parameters)
+                cmodel.x_steps = x_steps
+                current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
             
             x_steps = o
             
@@ -156,9 +158,7 @@ def main():
             E_d = E_nd / cmodel._E_0
             Es.append(E_d)
             Is.append(I_d)
-            # Os.append(O_nd)
-            # Rs.append(R_nd)
-         
+            
             #Plot current
             plt.cla()
             plt.plot(E_d[1:], (I_d[1:]), color = "red", label="PyBamm")
@@ -187,21 +187,6 @@ def main():
             # gc.collect()
             
             print("complete in time: " + str((time.time()-ti)/60) + " minutes")       
-    
-    # normalising the concentrations
-    # plt.cla()
-    # for u in range(len(Es)):    
-    #     plt.plot(Es[u], (Os[u]), label=str(x[u]) + "- S")
-    #     plt.plot(Es[u], (Os[u]), label=str(x[u]) + "- P")   
-    # plt.plot(v[:398], np.array(r[:398])/r[0], color = 'blue', linestyle = 'dashdot', label = 'Digielch - S')
-    # plt.plot(v[399:], np.array(r[399:])/r[0], color = 'green', linestyle = 'dashdot', label = 'Digielch - P')
-    # plt.title("Normalised Concentrations of S at different X steps")
-    # plt.xlabel("Potential [V]")
-    # plt.ylabel("Surface Coverage [non-dim]")
-    # plt.legend()
-    # plt.grid()
-    # plt.savefig(output+"Conc_S&P_cat05_dim_ko_"+str(i[5])+"_Ds_"+str(i[6])+"_Dp_"+str(i[7])+"._x_steps.png", dpi=600) 
-    
     
     return
 

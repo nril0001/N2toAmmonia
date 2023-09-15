@@ -30,6 +30,8 @@ class CatalyticModel:
         self.a = pybamm.Parameter("Electrode Area [cm2]")
         self.r = pybamm.Parameter("Electrode Radius [cm]")
         self.T = pybamm.Parameter("Temperature [K]")
+        self.Cdl_d = pybamm.Parameter("Capacitance [F]")
+        self.Ru_d = pybamm.Parameter("Uncompensated Resistance [Ohm]")
         
         self.E_start_d = pybamm.Parameter("Voltage start [V]")
         self.E_reverse_d = pybamm.Parameter("Voltage reverse [V]")
@@ -40,8 +42,6 @@ class CatalyticModel:
         self.k0_d = pybamm.InputParameter("Redox Rate [cm s-1]")
         self.k1_d = pybamm.InputParameter("Catalytic Rate [s-1]")
         self.alpha = pybamm.InputParameter("Symmetry factor [non-dim]")
-        self.Cdl_d = pybamm.InputParameter("Capacitance [F]")
-        self.Ru_d = pybamm.InputParameter("Uncompensated Resistance [Ohm]")
 
         # Create scaling factors for non-dimensionalisation
         self.T_0 = self.DS_d/self.r**2 # time, units in s-1
@@ -280,7 +280,7 @@ class CatalyticModel:
             print(e)
             solution = np.zeros_like(times_nd)
             
-        return (current, E, cS, cP, times, i_cap)
+        return (current, E, cS, cP, times)
 
 #TODO: Make a redimensionalise function
     # nd_sol are nondimensional solutions
