@@ -7,7 +7,7 @@ import pybamm
 import numpy as np
 
 class CatalyticModel:
-    def __init__(self,const_parameters,seioptions, atoler, rtoler, t_steps, x_steps):
+    def __init__(self,const_parameters,seioptions, atoler, rtoler, t_steps, x_steps, solver):
 
         #Const_parameters are the parameters to be passed into this model via main.py
         self.const_parameters = const_parameters
@@ -16,6 +16,7 @@ class CatalyticModel:
         self.rtoler = rtoler
         self.t_steps = t_steps
         self.x_steps = x_steps
+        self._solver_ = solver
 
         #Options relating to the models, like SEI
         self.options= self.calloptions()
@@ -52,8 +53,8 @@ class CatalyticModel:
         # Create dimensional input parameters"
         self.E01_d = pybamm.InputParameter("Reversible Potential 1 [V]")
         self.k0_d = pybamm.InputParameter("Electrosorption Rate [mol-1 cm3 s-1]")
-        self.k1_d = pybamm.InputParameter("Forward Catalytic Rate 1 [mol-1 cm3 s-1]")
-        self.k1b_d = pybamm.InputParameter("Backward Catalytic Rate 1 [s-1]")
+        self.k1_d = pybamm.InputParameter("Catalytic Rate For [mol-1 cm3 s-1]")
+        self.k1b_d = pybamm.InputParameter("Catalytic Rate Back [s-1]")
         self.alpha = pybamm.InputParameter("Symmetry factor [non-dim]")
         self.G = pybamm.InputParameter("G")
         self.G_ = pybamm.InputParameter("G'")
@@ -146,7 +147,7 @@ class CatalyticModel:
             Cs = self.cs_nd
             Cy = self.cy_nd
             SCp = self.scp_nd
-            SCx = self.scx_nd
+            SCx = self.G_max
             SCz = self.scz_nd
         elif sweep == "backward":
             Eapp = self.E_reverse + self.V * pybamm.t
@@ -167,24 +168,23 @@ class CatalyticModel:
 
         # Faradaic current (Butler Volmer)
         BV1 = self.k0 * ((c_at_electrode_s * (sc_x) *  BV_red1 *pybamm.exp((-self.G_)*(sc_p))) 
-                        - ((sc_p) * BV_ox1*pybamm.exp((self.G-self.G_)*(sc_p)))) 
+                        - ((sc_p) * self.C_0 * BV_ox1*pybamm.exp((self.G-self.G_)*(sc_p)))) 
         
-        #Catalytic Reaction
+        #Catalytic Reaction - 6Li + N2 
         cat_for = (self.k1 * c_at_electrode_y * sc_p) 
-        cat_back = (self.k1b * sc_p)
+        cat_back = (self.k1b * sc_z * self.B_0)
         
         #time derivatives
-        dSdt = (pybamm.div(pybamm.grad(c_s)) * self.d_S)
-        dYdt = (pybamm.div(pybamm.grad(c_y)) * self.d_Y)
-        dsPdt = BV1 - cat_for + cat_back
-        dsZdt = cat_for - cat_back
-        dsXdt = -BV1 + cat_back
+        dSdt = (pybamm.div(pybamm.grad(c_s)) * self.d_S) #Lithium
+        dYdt = (pybamm.div(pybamm.grad(c_y)) * self.d_Y) #Nitrogen
+        
+        dsPdt = BV1 - cat_for + cat_back #Adsorbed Lithium
+        dsZdt = cat_for - cat_back # Lithium Nitride
+        dsXdt = -BV1 # Active Sites
         
         #space derivatives
         dSdx = (BV1)/self.d_S
-        dYdx = 
-        dAdx = 
-        dBdx = 
+        dYdx = (cat_for - cat_back)/self.d_Y
         
         #current
         i_f = -dOdx
@@ -202,10 +202,7 @@ class CatalyticModel:
         model.rhs = {
             c_s: dSdt,
             c_y: dSdt,
-            c_a: dSdt,
-            c_b: dSdt,
             sc_p: dsPdt,
-            sc_p2: dsP2dt,
             sc_x: dsXdt,
             sc_z: dsZdt,
         }
@@ -220,23 +217,16 @@ class CatalyticModel:
             c_s: {"right": (self.cs_nd, "Dirichlet"),
                   "left": ((dSdx), "Neumann"),},
             c_y: {"right": (self.cy_nd, "Dirichlet"),
-                  "left": ((dSdx), "Neumann"),},
-            c_a: {"right": (self.ca_nd, "Dirichlet"),
-                  "left": ((dSdx), "Neumann"),},
-            c_b: {"right": (self.cb_nd, "Dirichlet"),
-                  "left": ((dSdx), "Neumann"),},
+                  "left": ((dYdx), "Neumann"),},
         }
         
         model.initial_conditions = {
             Eeff: Ee,
             c_s: Cs,
             c_y: Cy,
-            c_a: Ca,
-            c_b: Cb,
-            sc_p: SCP,
-            sc_p2: SCP2,
-            sc_x: SCX,
-            sc_z: SCZ,
+            sc_p: SCp,
+            sc_x: SCx,
+            sc_z: SCz,
         }
 
         # set spatial variables and domain geometry
@@ -269,15 +259,13 @@ class CatalyticModel:
         # model variables
         model.variables = {
             "Current [non-dim]": i,
+            "BV": BV1,
             "Applied Voltage [non-dim]": Eapp,
             "Effective Voltage [non-dim]": Eeff,
             "S(soln) at electrode [non-dim]": c_at_electrode_s,
             "S(soln) [non-dim]": c_s,
             "Y(soln) [non-dim]": c_y,
-            "A(soln) [non-dim]": c_a,
-            "B(soln) [non-dim]": c_b,
             "P(ads) [non-dim]": sc_p,
-            "P2(ads) [non-dim]": sc_p2,
             "X(ads) [non-dim]": sc_x,
             "Z(ads) [non-dim]": sc_z,
         }
@@ -294,9 +282,11 @@ class CatalyticModel:
         disc.process_model(model)
         
         # Create solver
-        # solver = pybamm.ScikitsDaeSolver(method="ida", atol=self.atoler, rtol=self.rtoler)
-        # model.convert_to_format = 'casadi'
-        solver = pybamm.CasadiSolver(mode='fast', rtol=self.rtoler, atol=self.atoler, root_method="casadi")
+        if self._solver_ == "Scikits":
+            solver = pybamm.ScikitsDaeSolver(method="ida", atol=self.atoler, rtol=self.rtoler)
+        elif self._solver_ == "Casadi":
+            # model.convert_to_format = 'casadi'
+            solver = pybamm.CasadiSolver(mode='fast', rtol=self.rtoler, atol=self.atoler, root_method="casadi")
     
         # Store discretised model and solver
         self._model = model
@@ -308,8 +298,8 @@ class CatalyticModel:
         self._I_0 = param.process_symbol(self.I_0).evaluate()
         self._T_0 = param.process_symbol(self.T_0).evaluate()
         self._CS_d = param.process_symbol(self.CS_d).evaluate()
-        self._CP_d = param.process_symbol(self.CP_d).evaluate()
-        self._deltaT_nd = param.process_symbol(self.deltaT_nd).evaluate()
+        # self._CP_d = param.process_symbol(self.CP_d).evaluate()
+        # self._deltaT_nd = param.process_symbol(self.deltaT_nd).evaluate()
 
         # store time scale related things
         self._Tmax_nd = param.process_symbol(self.Tmax_nd).evaluate()
@@ -331,29 +321,32 @@ class CatalyticModel:
         try:
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
             c_S = solution["S(soln) [non-dim]"](times_nd)
+            BV = solution["BV"](times_nd)
+            c_Y = solution["Y(soln) [non-dim]"](times_nd)
             c_P = solution["P(ads) [non-dim]"](times_nd)
-            c_P2 = solution["P2(ads) [non-dim]"](times_nd)
+            c_X = solution["X(ads) [non-dim]"](times_nd)
+            c_Z = solution["Z(ads) [non-dim]"](times_nd)
             cS = solution["S(soln) at electrode [non-dim]"](times_nd)
             E = solution["Applied Voltage [non-dim]"](times_nd)
             Ee = solution["Effective Voltage [non-dim]"](times_nd)
             current = solution["Current [non-dim]"](times_nd)
-            a_sites = solution["Active sites [non-dim]"](times_nd)
-            
      
-            self.model("backward", c_S[1:-1, -1], c_P[-1], a_sites[-1], Ee[-1], c_P2[-1])
+            self.model("backward", c_S[1:-1, -1], c_Y[1:-1, -1], c_P[-1], c_X[-1], c_Z[-1], Ee[-1])
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
             c_S = np.concatenate((c_S, solution["S(soln) [non-dim]"](times_nd)))
             c_P = np.concatenate((c_P, solution["P(ads) [non-dim]"](times_nd)))
+            c_Z = np.concatenate((c_Z, solution["Z(ads) [non-dim]"](times_nd)))
             cS = np.concatenate((cS, solution["S(soln) at electrode [non-dim]"](times_nd)))
             E = np.concatenate((E, solution["Applied Voltage [non-dim]"](times_nd)))
             Ee = np.concatenate((Ee, solution["Effective Voltage [non-dim]"](times_nd)))
             current = np.concatenate((current, solution["Current [non-dim]"](times_nd)))
+            BV = np.concatenate((BV, solution["BV"](times_nd)))
         
         except pybamm.SolverError as e:
             print(e)
             solution = np.zeros_like(times_nd)
             
-        return (current, E, cS, c_P, times)
+        return (current, E, cS, c_P, c_Z ,times, times_nd, BV)
 
 #TODO: Make a redimensionalise function
     # nd_sol are nondimensional solutions
