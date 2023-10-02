@@ -5,7 +5,7 @@ import pybamm
 import numpy as np
 
 class CatalyticModel:
-    def __init__(self,const_parameters,seioptions, atoler, rtoler, t_steps, x_steps):
+    def __init__(self,const_parameters,seioptions, atoler, rtoler, t_steps, x_steps, solver):
 
         #Const_parameters are the parameters to be passed into this model via main.py
         self.const_parameters = const_parameters
@@ -14,6 +14,7 @@ class CatalyticModel:
         self.rtoler = rtoler
         self.t_steps = t_steps
         self.x_steps = x_steps
+        self._solver_ = solver
 
         #Options relating to the models, like SEI
         self.options= self.calloptions()
@@ -42,7 +43,7 @@ class CatalyticModel:
         self.v = pybamm.Parameter("Scan Rate [V s-1]")
 
         # Create dimensional input parameters
-        self.E0_d = pybamm.InputParameter("Reversible Potential [V]")
+        self.E0_d = pybamm.InputParameter("Reversible Potential 1 [V]")
         self.k0_d = pybamm.InputParameter("Electrosorption Rate [mol-1 cm3 s-1]")
         self.alpha = pybamm.InputParameter("Symmetry factor [non-dim]")
         self.G = pybamm.InputParameter("G")
@@ -241,10 +242,11 @@ class CatalyticModel:
         disc.process_model(model)
         
         # Create solver
-        # model.convert_to_format = 'python'
-        # solver = pybamm.ScikitsDaeSolver(method="ida", atol=self.atoler, rtol=self.rtoler)
-        # model.convert_to_format = 'casadi'
-        solver = pybamm.CasadiSolver(mode='fast', rtol=self.rtoler, atol=self.atoler, root_method="casadi")
+        if self._solver_ == "Scikits":
+            solver = pybamm.ScikitsDaeSolver(method="ida", atol=self.atoler, rtol=self.rtoler)
+        elif self._solver_ == "Casadi":
+            # model.convert_to_format = 'casadi'
+            solver = pybamm.CasadiSolver(mode='fast', rtol=self.rtoler, atol=self.atoler, root_method="casadi")
     
         # Store discretised model and solver
         self._model = model
@@ -264,7 +266,7 @@ class CatalyticModel:
         self._m = self.t_steps
         self._x = self.x_steps
         
-        print("Catalytic Model 05 initialized successfully.")
+        # print("Catalytic Model 05 initialized successfully.")
 
     def simulate(self, parameters):
         #####DEBUGGING#####
@@ -274,8 +276,8 @@ class CatalyticModel:
         self.model("forward")
         times_nd = np.linspace(0, self._Tmax_nd, int(self._m)//2)
         times = np.linspace(0, self._Tmax_nd*2, int(self._m))
-        print("Number of timesteps: " + str(self._m//2))
-        print("Number of spacesteps: " + str(self._x))
+        # print("Number of timesteps: " + str(self._m//2))
+        # print("Number of spacesteps: " + str(self._x))
         try:
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
             c_S = solution["S(soln) [non-dim]"](times_nd)
