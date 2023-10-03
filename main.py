@@ -25,15 +25,16 @@ def main():
         os.mkdir(output+"SC", 0o666)
         os.mkdir(output+"CV", 0o666)
     
-    files = [['DigiElech/2023-08-23 diffusion only comparison/CV/0 Ru/CV_k0_1e3_R_0_Cd_0_Ds_1e-5_v_4e-1.txt', 1e-3, 1e-5]]
-    
+    # files = [['DigiElech/2023-10-02 adsorption/CV_R_130_v_2e-2_k0_1e-3_G_0.txt']]
+    files = [['DigiElech/2023-10-02 adsorption/CV_R_130_v_2e-2_k0_1e-3_G_0_Gamma_1.txt']]
+
     # retrieve variables from file pathway
-    for t in files:
-        variables = re.findall(
-            "[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", t[0])
-        for l in range(len(variables)):
-            variables[l] = float(variables[l])
-            t.append(variables[l])
+    # for t in files:
+    #     variables = re.findall(
+    #         "[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", t[0])
+    #     for l in range(len(variables)):
+    #         variables[l] = float(variables[l])
+    #         t.append(variables[l])
     
     for i in files:
         print(i)
@@ -53,53 +54,44 @@ def main():
                 curr.append(float(row[1]))
     
     curr = np.array(curr)
-    area = 1
+    #edit to control parameters
+    area = 0.05
     radius = np.sqrt(area/np.pi)
-    k0 = [1]
+    srate = 0.02
+    # k0 = [1]
     kf = 1e-10
     kb = 1e-10
-    Ru = 1
+    Ru = 130
     Cdl = 0
-    atol = 1e-7
-    rtol = 1e-7
-    t_steps = [2**(10)]
+    atol = 1e-6
+    rtol = 1e-6
+    t_steps = [2**(12)]
     x_steps = [750]
-    # solver = "Casadi"
-    solver = "Scikits"
+    solver = "Casadi"
+    # solver = "Scikits"
     
-    DS_d = 1
-    DP_d = 1
+    DS_d = 2.27e-6
+    DP_d = 2.27e-6
     DY_d = 1
-    CS_d = 1
-    Gamma = 1
+    CS_d = 0.0015
+    Gamma = 1e-9
     F = 96485.3328959
     R = 8.314459848
     T = 298.2
-    # r = np.sqrt(area/np.pi)  
-    r = 100
+    r = np.sqrt(area/np.pi)  
     G = 0
     G_ = 0
     
-    # Create scaling factors for non-dimensionalisation
-    T_0 = DS_d/r**2 # time, units in s-1
-    X_0 = 1/r # distance, units in cm-1
-    C_0 = 1/CS_d # concentration, units in mol cm-3 
-    G_0 = 1/Gamma # surface concentration units in mol-1 cm2
+    # Scaling factors for non-dimensionalisation
     K_0 = (Gamma*r)/DS_d # adsorption rate constant, units in mol-3 cm s
-    D_0 = 1/DS_d # diffusion, units in s cm-2
-    V_0 = (r**2/DS_d)*(F / (R * T)) # scan rate, units in s V-1
-    B_0 = (r*CS_d)/Gamma #Saturation coefficient
-    E_0 = F / (R * T) # potential, units in V-1
-    I_0 = 1/(np.pi*r*F*DS_d*CS_d) # current, units in A-1
-    
+    k0 = [1e2/K_0, 2e2/K_0, 3e2/K_0, 4e2/K_0, 5e2/K_0]
+
     E_ds = []
     I_ds = []
     Z_ds = []
     
     for o in k0:   
         print(o*K_0)
-        # print(B_0)
-        # print(2.569689992599293e-04*V_0)
         #constants that can vary, but generally won't change expt to expt
         const_parameters = {
             "Faraday Constant [C mol-1]": F,
@@ -116,12 +108,12 @@ def main():
             "Diffusion Coefficient of P [cm2 s-1]": DP_d,
             "Diffusion Coefficient of Y [cm2 s-1]": DY_d,
             "Diffusion Layer Thickness [cm]": 1,
-            "Electrode Area [cm2]": 1,
+            "Electrode Area [cm2]": 0.05,
             "Electrode Radius [cm]": radius,
-            "Voltage start [V]": 0.5,
-            "Voltage reverse [V]": -0.5,
+            "Voltage start [V]": 1.5,
+            "Voltage reverse [V]": -0.3,
             "Voltage amplitude [V]": 0.0,
-            "Scan Rate [V s-1]": 2.569689e-04,
+            "Scan Rate [V s-1]": srate,
             "Uncompensated Resistance [Ohm]": Ru,
             "Capacitance [F]": Cdl, #1e-8,
         }
@@ -152,7 +144,7 @@ def main():
         #     cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, tss, xss, solver)
         #     current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
         ##redimensionalizing here for now. Messy to do in main, move later
-        I_d = current 
+        I_d = current / cmodel._I_0
         E_d = E_nd / cmodel._E_0
         E_ds.append(E_d)
         I_ds.append(I_d)
@@ -172,9 +164,8 @@ def main():
     # Plot current
     plt.cla()
     for u in range(len(E_ds)):    
-        plt.plot(E_ds[u], I_ds[u], label=str(k0[u]*K_0) + "- S - Red")  
-        # plt.plot(E_ds[u], Z_ds[u], label=str(k0[u]*K_0) + "- S - Z")   
-    # plt.plot(volt, np.array(-curr), color = 'orange', linestyle = 'dashdot', label = 'Digielch')
+        plt.plot(E_ds[u], I_ds[u], label="k0 = " + str(k0[u]*K_0) + " cm3 mol-1 s-1")
+    # plt.plot(volt, np.array(-curr), linestyle = 'dashdot', label = 'Digielch - ks = 1e-3, Gmax = 1')
     # plt.plot(E_d, O_nd, color = 'Red', label = 'Pybamm', linestyle='dashed')
     # plt.plot(E_d, R_nd, color = 'Blue', label = 'Pybamm', linestyle='dashed')
     # plt.plot(E_d, current, color = 'Blue', label = 'Pybamm', linestyle='dashed')
@@ -184,7 +175,7 @@ def main():
     plt.ylabel("Current [A]")
     plt.legend(loc='upper left')
     plt.grid()
-    plt.savefig(output+"CV_cat04_dim.png", dpi=1000)
+    plt.savefig(output+"CV_cat06_multi_k0_casadi4.png", dpi=600)
     # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
     
     
