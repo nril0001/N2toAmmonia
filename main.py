@@ -25,8 +25,8 @@ def main():
         os.mkdir(output+"SC", 0o666)
         os.mkdir(output+"CV", 0o666)
     
-    # files = [['DigiElech/2023-10-02 adsorption/CV_R_130_v_2e-2_k0_1e-3_G_0.txt']]
-    files = [['DigiElech/2023-10-02 adsorption/CV_R_130_v_2e-2_k0_1e-3_G_0_Gamma_1.txt']]
+    files = [['DigiElech/2023-10-02 adsorption/CV_R_130_v_2e-2_k0_1e-3_G_0.txt']]
+    # files = [['DigiElech/2023-10-02 adsorption/CV_R_130_v_2e-2_k0_1e-3_G_0_Gamma_1.txt']]
 
     # retrieve variables from file pathway
     # for t in files:
@@ -57,14 +57,15 @@ def main():
     #edit to control parameters
     area = 0.05
     radius = np.sqrt(area/np.pi)
-    srate = 0.02
-    # k0 = [1]
+    # srate = [0.02]
+    srate = [0.02, 0.1, 0.2, 0.4, 1]
+    k0 = 1e4
     kf = 1e-10
     kb = 1e-10
     Ru = 130
     Cdl = 0
-    atol = 1e-6
-    rtol = 1e-6
+    atol = 1e-7
+    rtol = 1e-7
     t_steps = [2**(12)]
     x_steps = [750]
     solver = "Casadi"
@@ -73,25 +74,23 @@ def main():
     DS_d = 2.27e-6
     DP_d = 2.27e-6
     DY_d = 1
-    CS_d = 0.0015
+    CS_d = 0.002
     Gamma = 1e-9
     F = 96485.3328959
     R = 8.314459848
     T = 298.2
-    r = np.sqrt(area/np.pi)  
     G = 0
     G_ = 0
     
     # Scaling factors for non-dimensionalisation
-    K_0 = (Gamma*r)/DS_d # adsorption rate constant, units in mol-3 cm s
-    k0 = [1e2/K_0, 2e2/K_0, 3e2/K_0, 4e2/K_0, 5e2/K_0]
+    K_0 = (Gamma*radius)/DS_d # adsorption rate constant, units in mol-3 cm s
 
     E_ds = []
     I_ds = []
     Z_ds = []
     
-    for o in k0:   
-        print(o*K_0)
+    for o in srate:   
+        print("k0 = " + str(k0) + ", " + str(o*1000) + " mV/s")
         #constants that can vary, but generally won't change expt to expt
         const_parameters = {
             "Faraday Constant [C mol-1]": F,
@@ -110,10 +109,10 @@ def main():
             "Diffusion Layer Thickness [cm]": 1,
             "Electrode Area [cm2]": 0.05,
             "Electrode Radius [cm]": radius,
-            "Voltage start [V]": 1.5,
-            "Voltage reverse [V]": -0.3,
+            "Voltage start [V]": 2.0,
+            "Voltage reverse [V]": -0.6,
             "Voltage amplitude [V]": 0.0,
-            "Scan Rate [V s-1]": srate,
+            "Scan Rate [V s-1]": o,
             "Uncompensated Resistance [Ohm]": Ru,
             "Capacitance [F]": Cdl, #1e-8,
         }
@@ -123,7 +122,7 @@ def main():
             "G": G,
             "G'": G_,
             "Reversible Potential 1 [V]": 0,
-            "Electrosorption Rate [mol-1 cm3 s-1]": o,
+            "Electrosorption Rate [mol-1 cm3 s-1]": k0,
             "Desorption Rate [s-1]": 0,
             "Catalytic Rate For [mol-1 cm3 s-1]": kf*1000,
             "Catalytic Rate Back [s-1]": kb*1000,
@@ -164,18 +163,20 @@ def main():
     # Plot current
     plt.cla()
     for u in range(len(E_ds)):    
-        plt.plot(E_ds[u], I_ds[u], label="k0 = " + str(k0[u]*K_0) + " cm3 mol-1 s-1")
-    # plt.plot(volt, np.array(-curr), linestyle = 'dashdot', label = 'Digielch - ks = 1e-3, Gmax = 1')
+        plt.plot(E_ds[u], (I_ds[u] / area * 1000), label="v = " + str(srate[u]*1000) + " mV/s")
+    # plt.plot(volt, np.array(-curr), linestyle = 'dashdot', label = 'Digielch - ks = 1e-3, Gmax = 1e-9')
     # plt.plot(E_d, O_nd, color = 'Red', label = 'Pybamm', linestyle='dashed')
     # plt.plot(E_d, R_nd, color = 'Blue', label = 'Pybamm', linestyle='dashed')
     # plt.plot(E_d, current, color = 'Blue', label = 'Pybamm', linestyle='dashed')
     # plt.plot(T_nd, R_nd, color = 'Red', label = 'Pybamm', linestyle='dashed')
-        np.savetxt(output+"test.txt", np.column_stack((E_ds[u], I_ds[u])))
-    plt.xlabel("Eapp [V]")
-    plt.ylabel("Current [A]")
+        # np.savetxt(output+"test.txt", np.column_stack((E_ds[u], I_ds[u])))
+    plt.xlabel("Eapp (V)")
+    # plt.ylabel("Current (A)")
+    plt.ylabel("j / mA cm-2")
+    plt.title("k0 = " + str(k0) + " cm3 mol-1 s-1")
     plt.legend(loc='upper left')
     plt.grid()
-    plt.savefig(output+"CV_cat06_multi_k0_casadi4.png", dpi=600)
+    plt.savefig(output+"CV_cat06_multi_srate_casadi1.png", dpi=600)
     # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
     
     
