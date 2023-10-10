@@ -2,7 +2,7 @@
 ## Single layer lithium deposition and Li3N reaction only
 ## Li+ + S* + e- <-> Li
 ## 3Li + N <-> Li3N
-###Li3N + 3H+ <--> NH3 + Li+
+## Li3N + 3H+ <--> NH3 + Li+
 
 import pybamm
 import numpy as np

@@ -94,8 +94,8 @@ class CatalyticModel:
         self.deltaT_nd = self.Tmax_nd / self.t_steps #no units
         
         #max length of diffusion layer
-        self.x_max = 6 * pybamm.sqrt(self.d_max * self.Tmax_nd) #no units
-        # self.x_max = self.Delta * self.X_0
+        # self.x_max = 6 * pybamm.sqrt(self.d_max * self.Tmax_nd) #no units
+        self.x_max = self.Delta * self.X_0
         
         #scan rate
         self.V = self.V_0 * self.v #no units

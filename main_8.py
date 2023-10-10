@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel06 as cm
+import catalyticmodel08 as cm
 import time
 import re
 import matplotlib.pylab as plt
@@ -133,13 +133,14 @@ def main():
         #setting main model to reference CatalyticModel class
         cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps[0], x_steps[0], solver)
         #setting solved answers to ones usable here
-        current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
+        current, E_nd, O_nd, R_nd, c_Z, T_d, T_nd, BV = cmodel.simulate(input_parameters)
         xss = x_steps[0]
         tss = t_steps[0]
         while len(E_nd) == tss/2:
             xss = xss + 2
             cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, tss, xss, solver)
-            current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
+            current, E_nd, O_nd, R_nd, c_Z, T_d, T_nd, BV = cmodel.simulate(input_parameters)
+            
         ##redimensionalizing here for now. Messy to do in main, move later
         I_d = current / cmodel._I_0
         E_d = E_nd / cmodel._E_0

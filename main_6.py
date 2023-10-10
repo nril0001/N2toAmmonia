@@ -59,8 +59,6 @@ def main():
     radius = np.sqrt(area/np.pi)
     srate = [0.02, 0.1, 0.2, 0.4, 1]
     k0 = 1e12
-    kf = 1e-10
-    kb = 1e-10
     Ru = 130
     Cdl = 0
     atol = 1e-7
@@ -73,7 +71,6 @@ def main():
     D_thickness = 1e-4
     DS_d = 2.27e-6
     DP_d = 2.27e-6
-    DY_d = 1
     CS_d = 0.002
     Gamma = 1e-9
     F = 96485.3328959
@@ -82,9 +79,6 @@ def main():
     G = 0
     G_ = 0
     
-    # Scaling factors for non-dimensionalisation
-    K_0 = (Gamma*radius)/DS_d # adsorption rate constant, units in mol-3 cm s
-
     E_ds = []
     I_ds = []
     Z_ds = []
@@ -98,14 +92,10 @@ def main():
             "Temperature [K]": T,
             "Far-field concentration of S(soln) [mol cm-3]": CS_d,
             "Far-field concentration of P(soln) [mol cm-3]": 0,
-            "Far-field concentration of Y(soln) [mol cm-3]": CS_d,
             "Surface coverage of P [mol cm-2]": 0,
-            "Surface coverage of X [mol cm-2]": 0,
-            "Surface coverage of Z [mol cm-2]": 0,
             "Electrode Coverage [mol cm-2]": Gamma,
             "Diffusion Coefficient of S [cm2 s-1]": DS_d,
             "Diffusion Coefficient of P [cm2 s-1]": DP_d,
-            "Diffusion Coefficient of Y [cm2 s-1]": DY_d,
             "Diffusion Layer Thickness [cm]": D_thickness,
             "Electrode Area [cm2]": 0.05,
             "Electrode Radius [cm]": radius,
@@ -123,9 +113,6 @@ def main():
             "G'": G_,
             "Reversible Potential 1 [V]": 0,
             "Electrosorption Rate [mol-1 cm3 s-1]": k0,
-            "Desorption Rate [s-1]": 0,
-            "Catalytic Rate For [mol-1 cm3 s-1]": kf*1000,
-            "Catalytic Rate Back [s-1]": kb*1000,
             "Symmetry factor [non-dim]": 0.5,
             
         }

@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel06 as cm
+import catalyticmodel07 as cm
 import time
 import re
 import matplotlib.pylab as plt
@@ -58,13 +58,13 @@ def main():
     area = 0.05
     radius = np.sqrt(area/np.pi)
     srate = [0.02, 0.1, 0.2, 0.4, 1]
-    k0 = 1e12
-    kf = 1e-10
-    kb = 1e-10
-    Ru = 130
+    k0 = 1e0
+    kads = 1e1
+    kdes = 0
+    Ru = 0
     Cdl = 0
-    atol = 1e-7
-    rtol = 1e-7
+    atol = 1e-15
+    rtol = 1e-15
     t_steps = [2**(12)]
     x_steps = [750]
     solver = "Casadi"
@@ -72,19 +72,12 @@ def main():
     
     D_thickness = 1e-4
     DS_d = 2.27e-6
-    DP_d = 2.27e-6
-    DY_d = 1
     CS_d = 0.002
     Gamma = 1e-9
     F = 96485.3328959
     R = 8.314459848
     T = 298.2
-    G = 0
-    G_ = 0
     
-    # Scaling factors for non-dimensionalisation
-    K_0 = (Gamma*radius)/DS_d # adsorption rate constant, units in mol-3 cm s
-
     E_ds = []
     I_ds = []
     Z_ds = []
@@ -98,18 +91,14 @@ def main():
             "Temperature [K]": T,
             "Far-field concentration of S(soln) [mol cm-3]": CS_d,
             "Far-field concentration of P(soln) [mol cm-3]": 0,
-            "Far-field concentration of Y(soln) [mol cm-3]": CS_d,
+            "Surface coverage of S [mol cm-2]": 0,
             "Surface coverage of P [mol cm-2]": 0,
-            "Surface coverage of X [mol cm-2]": 0,
-            "Surface coverage of Z [mol cm-2]": 0,
             "Electrode Coverage [mol cm-2]": Gamma,
             "Diffusion Coefficient of S [cm2 s-1]": DS_d,
-            "Diffusion Coefficient of P [cm2 s-1]": DP_d,
-            "Diffusion Coefficient of Y [cm2 s-1]": DY_d,
             "Diffusion Layer Thickness [cm]": D_thickness,
             "Electrode Area [cm2]": 0.05,
             "Electrode Radius [cm]": radius,
-            "Voltage start [V]": 2.0,
+            "Voltage start [V]": 0.5,
             "Voltage reverse [V]": -0.55,
             "Voltage amplitude [V]": 0.0,
             "Scan Rate [V s-1]": o,
@@ -119,13 +108,10 @@ def main():
         
         #conditions that will change often over the course of testing
         input_parameters = {
-            "G": G,
-            "G'": G_,
             "Reversible Potential 1 [V]": 0,
-            "Electrosorption Rate [mol-1 cm3 s-1]": k0,
-            "Desorption Rate [s-1]": 0,
-            "Catalytic Rate For [mol-1 cm3 s-1]": kf*1000,
-            "Catalytic Rate Back [s-1]": kb*1000,
+            "Redox Rate (ads) [s-1]": k0,
+            "Adsorption Rate [mol-1 cm3 s-1]": kads,
+            "Desorption Rate [s-1]": kdes,
             "Symmetry factor [non-dim]": 0.5,
             
         }
@@ -138,6 +124,7 @@ def main():
         tss = t_steps[0]
         while len(E_nd) == tss/2:
             xss = xss + 2
+            tss = tss + 2
             cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, tss, xss, solver)
             current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
         ##redimensionalizing here for now. Messy to do in main, move later
