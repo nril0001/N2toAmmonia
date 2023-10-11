@@ -158,10 +158,10 @@ def main():
     plt.xlabel("Eapp (V)")
     # plt.ylabel("Current (A)")
     plt.ylabel("j / mA cm-2")
-    plt.title("k0 = " + str(k0) + " cm3 mol-1 s-1")
+    plt.title("k0 = " + str(k0) + " s-1")
     plt.legend(loc='upper left')
     plt.grid()
-    plt.savefig(output+"CV_cat06_multi_srate_casadi11.png", dpi=600)
+    plt.savefig(output+"CV_cat07_multi_srate_casadi1.png", dpi=600)
     # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
     
     

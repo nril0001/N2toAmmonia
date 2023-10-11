@@ -75,6 +75,7 @@ def main():
     DP_d = 2.27e-6
     DY_d = 1
     CS_d = 0.002
+    CY_d = 1e-5
     Gamma = 1e-9
     F = 96485.3328959
     R = 8.314459848
@@ -98,7 +99,7 @@ def main():
             "Temperature [K]": T,
             "Far-field concentration of S(soln) [mol cm-3]": CS_d,
             "Far-field concentration of P(soln) [mol cm-3]": 0,
-            "Far-field concentration of Y(soln) [mol cm-3]": CS_d,
+            "Far-field concentration of Y(soln) [mol cm-3]": CY_d,
             "Surface coverage of P [mol cm-2]": 0,
             "Surface coverage of X [mol cm-2]": 0,
             "Surface coverage of Z [mol cm-2]": 0,
@@ -173,9 +174,9 @@ def main():
     # plt.ylabel("Current (A)")
     plt.ylabel("j / mA cm-2")
     plt.title("k0 = " + str(k0) + " cm3 mol-1 s-1")
-    plt.legend(loc='upper left')
+    plt.legend(loc='lower right')
     plt.grid()
-    plt.savefig(output+"CV_cat06_multi_srate_casadi11.png", dpi=600)
+    plt.savefig(output+"CV_cat08_multi_srate_casadi1.png", dpi=600)
     # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
     
     

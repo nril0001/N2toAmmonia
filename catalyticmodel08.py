@@ -1,7 +1,7 @@
 ## Adsorption concerted electron transfer 
 ## Single layer lithium deposition and Li3N reaction only
-## Li+ + S* + e- <-> Li
-## 3Li + N <-> Li3N
+## Li+ + S* + e- <-> Li*
+## 3Li* + N <-> Li3N* (simplified to Li* + X <-> LiX*)
 
 import pybamm
 import numpy as np
@@ -201,7 +201,7 @@ class CatalyticModel:
         #dividing by their own coefficients
         model.rhs = {
             c_s: dSdt,
-            c_y: dSdt,
+            c_y: dYdt,
             sc_p: dsPdt,
             sc_x: dsXdt,
             sc_z: dsZdt,
@@ -306,7 +306,7 @@ class CatalyticModel:
         self._m = self.t_steps
         self._x = self.x_steps
         
-        print("Catalytic Model 05 initialized successfully.")
+        print("Catalytic Model 08 initialized successfully.")
 
     def simulate(self, parameters):
         #####DEBUGGING#####
