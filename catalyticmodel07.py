@@ -28,6 +28,7 @@ class CatalyticModel:
         
         self.SCS_d = pybamm.Parameter("Surface coverage of P [mol cm-2]")
         self.SCP_d = pybamm.Parameter("Surface coverage of S [mol cm-2]")
+        self.C0 = pybamm.Parameter("Standard Unity Concentration [mol cm-3]")
         
         self.DS_d = pybamm.Parameter("Diffusion Coefficient of S [cm2 s-1]")
         
@@ -83,6 +84,7 @@ class CatalyticModel:
         self.d_max = self.d_S #no units
         
         #Concentrations
+        self.c0 = self.C0 * self.C_0 #no units
         self.cs_nd = self.CS_d * self.C_0 #no units
         
         #Surface concentrations
@@ -155,10 +157,10 @@ class CatalyticModel:
         BV_ox1 = self.BV_ox(Eeff, self.E01)
 
         # Faradaic current (Butler Volmer)
-        BV1 = self.k0 * ((sc_s *  BV_red1)  - ((sc_p) * self.C_0 * BV_ox1)) 
+        BV1 = self.k0 * ((sc_s *  BV_red1)  - ((sc_p) * BV_ox1)) 
         
         #adsorption and desorption
-        ads = self.kads*c_at_electrode_s*sc_x
+        ads = self.kads*c_at_electrode_s*(1 - sc_s - sc_p)
         des = self.kdes*sc_s
         
         #time derivatives
@@ -171,7 +173,7 @@ class CatalyticModel:
         dSdx = (ads - des)/self.d_S
         
         #current
-        i_f = -BV1/self.B_0
+        i_f = -dsPdt/self.B_0
         i_cap = self.Cdl * self.V
         if sweep == "forward":
             i = i_f - i_cap

@@ -165,11 +165,16 @@ class CatalyticModel:
         BV_ox2 = self.BV_ox(Eeff, self.E02)
 
         # Faradaic current (Butler Volmer)
-        BV1 = self.k01 * ((c_at_electrode_s * (sc_x) *  BV_red1) 
-                        - ((sc_p) * self.c0 * BV_ox1)) 
+        BV1 = self.k01 * ((c_at_electrode_s * (1-sc_p) *  BV_red1) 
+                        - ((sc_p) * self.c0 * BV_ox1 * (sc_p1 < 1) )) 
         
-        BV2 = self.k02 * ((c_at_electrode_s * (sc_p-sc_p1) *  BV_red2) 
-                        - ((sc_p1) * self.c0 * BV_ox2)) 
+        BV2 = self.k02 * ((c_at_electrode_s * BV_red2 * (sc_p > 0)) 
+                        - (self.c0 * BV_ox2 * sc_p1)
+                        
+                        
+                        
+                        
+                        ) 
         
         #time derivatives
         dSdt = (pybamm.div(pybamm.grad(c_s)) * self.d_S) #Lithium

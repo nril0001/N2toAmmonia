@@ -58,9 +58,9 @@ def main():
     area = 0.05
     radius = np.sqrt(area/np.pi)
     srate = [0.02, 0.1, 0.2, 0.4, 1]
-    k0 = 1e12
-    kf = 1e-10
-    kb = 1e-10
+    k0 = 1e3
+    kf = 1e7
+    kb = 1e2
     Ru = 130
     Cdl = 0
     atol = 1e-7
@@ -97,6 +97,7 @@ def main():
             "Faraday Constant [C mol-1]": F,
             "Gas constant [J K-1 mol-1]": R,
             "Temperature [K]": T,
+            "Standard Unity Concentration [mol cm-3]": 0.001,
             "Far-field concentration of S(soln) [mol cm-3]": CS_d,
             "Far-field concentration of P(soln) [mol cm-3]": 0,
             "Far-field concentration of Y(soln) [mol cm-3]": CY_d,
@@ -124,7 +125,6 @@ def main():
             "G'": G_,
             "Reversible Potential 1 [V]": 0,
             "Electrosorption Rate [mol-1 cm3 s-1]": k0,
-            "Desorption Rate [s-1]": 0,
             "Catalytic Rate For [mol-1 cm3 s-1]": kf*1000,
             "Catalytic Rate Back [s-1]": kb*1000,
             "Symmetry factor [non-dim]": 0.5,
@@ -134,13 +134,13 @@ def main():
         #setting main model to reference CatalyticModel class
         cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps[0], x_steps[0], solver)
         #setting solved answers to ones usable here
-        current, E_nd, O_nd, R_nd, c_Z, T_d, T_nd, BV = cmodel.simulate(input_parameters)
+        current, E_nd, O_nd, R_nd, T_d, T_nd = cmodel.simulate(input_parameters)
         xss = x_steps[0]
         tss = t_steps[0]
         while len(E_nd) == tss/2:
             xss = xss + 2
             cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, tss, xss, solver)
-            current, E_nd, O_nd, R_nd, c_Z, T_d, T_nd, BV = cmodel.simulate(input_parameters)
+            current, E_nd, O_nd, R_nd, T_d, T_nd = cmodel.simulate(input_parameters)
             
         ##redimensionalizing here for now. Messy to do in main, move later
         I_d = current / cmodel._I_0

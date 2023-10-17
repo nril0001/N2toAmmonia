@@ -58,11 +58,11 @@ def main():
     area = 0.05
     radius = np.sqrt(area/np.pi)
     srate = [0.02, 0.1, 0.2, 0.4, 1]
-    k0 = 1e12
+    k0 = 1e10
     Ru = 130
     Cdl = 0
-    atol = 1e-7
-    rtol = 1e-7
+    atol = 1e-9
+    rtol = 1e-9
     t_steps = [2**(12)]
     x_steps = [750]
     solver = "Casadi"
@@ -72,7 +72,7 @@ def main():
     DS_d = 2.27e-6
     DP_d = 2.27e-6
     CS_d = 0.002
-    Gamma = 1e-9
+    Gamma = 1.5e-9
     F = 96485.3328959
     R = 8.314459848
     T = 298.2
@@ -90,6 +90,7 @@ def main():
             "Faraday Constant [C mol-1]": F,
             "Gas constant [J K-1 mol-1]": R,
             "Temperature [K]": T,
+            "Standard Unity Concentration [mol cm-3]": 0.001,
             "Far-field concentration of S(soln) [mol cm-3]": CS_d,
             "Far-field concentration of P(soln) [mol cm-3]": 0,
             "Surface coverage of P [mol cm-2]": 0,

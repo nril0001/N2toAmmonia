@@ -24,17 +24,23 @@ class CatalyticModel:
         #Adding separate D parameters for S and P
         self.CS_d = pybamm.Parameter("Far-field concentration of S(soln) [mol cm-3]")
         self.CP_d = pybamm.Parameter("Far-field concentration of P(soln) [mol cm-3]")
+        self.C0 = pybamm.Parameter("Standard Unity Concentration [mol cm-3]")
+        
         self.CSa_d = pybamm.Parameter("Surface coverage of S [mol cm-2]")
         self.CPa_d = pybamm.Parameter("Surface coverage of P [mol cm-2]")
+        
         self.DS_d = pybamm.Parameter("Diffusion Coefficient of S [cm2 s-1]")
         self.DP_d = pybamm.Parameter("Diffusion Coefficient of P [cm2 s-1]")
+        
         self.Delta = pybamm.Parameter("Diffusion Layer Thickness [cm]")
         self.Gamma = pybamm.Parameter("Electrode Coverage [mol cm-2]")
-        self.F = pybamm.Parameter("Faraday Constant [C mol-1]")
-        self.R = pybamm.Parameter("Gas constant [J K-1 mol-1]")
         self.a = pybamm.Parameter("Electrode Area [cm2]")
         self.r = pybamm.Parameter("Electrode Radius [cm]")
+        
+        self.F = pybamm.Parameter("Faraday Constant [C mol-1]")
+        self.R = pybamm.Parameter("Gas constant [J K-1 mol-1]")
         self.T = pybamm.Parameter("Temperature [K]")
+        
         self.Cdl_d = pybamm.Parameter("Capacitance [F]")
         self.Ru_d = pybamm.Parameter("Uncompensated Resistance [Ohm]")
         
@@ -53,22 +59,21 @@ class CatalyticModel:
         # Create scaling factors for non-dimensionalisation
         self.T_0 = self.DS_d/self.r**2 # time, units in s-1
         self.X_0 = 1/self.r # distance, units in cm-1
-        self.K_0 = (self.Gamma*self.r)/self.DS_d # electrsorption rate constant, units in mol cm-3 s
         self.C_0 = 1/self.CS_d # concentration, units in mol cm-3 
         self.G_0 = 1/self.Gamma # surface concentration units in mol-1 cm2
+        self.K_0 = (self.Gamma*self.r)/self.DS_d # electrsorption rate constant, units in mol cm-3 s
         self.D_0 = 1/self.DS_d # diffusion, units in s cm-2
-        self.E_0 = self.F / (self.R * self.T) # potential, units in V-1
         self.V_0 = (self.r**2/self.DS_d)*(self.F / (self.R * self.T)) # scan rate, units in s V-1
+        self.E_0 = self.F / (self.R * self.T) # potential, units in V-1
+        self.B_0 = (self.r*self.CS_d)/self.Gamma #Saturation coefficient
         self.I_0 = 1/(np.pi*self.r*self.F*self.DS_d*self.CS_d) # current, units in A-1
         
         self.Cdl_0 = (self.E_0)/(self.I_0 * self.T_0) # capacitance, units in V s A-1
         self.Ru_0 = self.E_0/self.I_0 # resistance, units in A V-1
         
         # Non-dimensionalise parameters
-        self.E0 = self.E0_d * self.E_0 #no units
+        #Rate constants
         self.k0 = self.k0_d * self.K_0 #no units
-        self.Cdl = self.Cdl_d * self.Cdl_0 #no units
-        self.Ru = self.Ru_d * self.Ru_0 #no units
         
         #Diffusion coefficients
         self.d_S = self.DS_d * self.D_0 #no units
@@ -76,6 +81,7 @@ class CatalyticModel:
         self.d_max = pybamm.maximum(self.d_S, self.d_P) #no units
         
         #Concentrations
+        self.c0 = self.C0 * self.C_0 #no units
         self.cs_nd = self.CS_d * self.C_0 #no units
         self.cp_nd = self.CP_d * self.C_0 #no units
         
@@ -84,21 +90,25 @@ class CatalyticModel:
         self.csa_nd = self.CSa_d * self.G_0 # no units
         self.cpa_nd = self.CPa_d * self.G_0 # no units
 
+        #Potential
+        self.E0 = self.E0_d * self.E_0 #no units
         self.E_start = self.E_start_d * self.E_0 #no units
         self.E_reverse = self.E_reverse_d * self.E_0 #no units
         
-        #creating time scale and non-dimensionalizing
-        self.Tmax_nd = (abs(self.E_start_d - self.E_reverse_d)/self.v)*self.T_0 #no units
+        #Scan Rate
+        self.V = self.V_0 * self.v #no units
         
-        #length of time step, nondimensional
+        #Time
+        self.Tmax_nd = (abs(self.E_start_d - self.E_reverse_d)/self.v)*self.T_0 #no units
         self.deltaT_nd = self.Tmax_nd / self.t_steps #no units
         
-        #max length of diffusion layer
+        #Distance
         # self.x_max = 6 * pybamm.sqrt(self.d_max * self.Tmax_nd) #no units
         self.x_max = self.Delta * self.X_0
         
-        #scan rate
-        self.V = self.V_0 * self.v #no units
+        #Resistance and Capacitance
+        self.Cdl = self.Cdl_d * self.Cdl_0 #no units
+        self.Ru = self.Ru_d * self.Ru_0 #no units
     
     #define concentration of reactant electrons
     def BV_red(self, E, E0):
@@ -110,9 +120,8 @@ class CatalyticModel:
         
     def model(self, sweep="forward", Cs =None, Cpa = None, active=None ,Ee=None, Ea=None):
         
-        param = pybamm.ParameterValues(self.const_parameters)
-        
         # create PyBaMM model object
+        param = pybamm.ParameterValues(self.const_parameters)
         model = pybamm.BaseBatteryModel(options=self.seioptions)
 
         # Create state variables for model
@@ -124,22 +133,16 @@ class CatalyticModel:
         
         if sweep == "forward":
             Eapp = self.E_start - self.V * pybamm.t
+            Ee = self.E_start
             Cs = self.cs_nd
-            # Cp = self.cp_nd
-            # Csa = self.csa_nd
             Cpa = self.cpa_nd
             active = self.G_max
-            Ee = self.E_start
-            Ea = self.E_start
         elif sweep == "backward":
             Eapp = self.E_reverse + self.V * pybamm.t
+            Ee = Ee
             Cs = pybamm.Array(Cs, domain="solution")
-            # Cp = pybamm.Array(Cp, domain="solution")
-            # Csa = Csa
             Cpa = Cpa
             active = active
-            Ee = Ee 
-            Ea = Ea
 
         # defining boundary values for S
         c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
@@ -149,7 +152,17 @@ class CatalyticModel:
         BV_ox = self.BV_ox(Eeff, self.E0)
 
         # Faradaic current (Butler Volmer)
-        BV = self.k0 * ((c_at_electrode_s * (a_sites) *  BV_red *pybamm.exp((-self.G_)*c_p)) - (c_p * BV_ox*pybamm.exp((self.G-self.G_)*c_p))) 
+        BV = self.k0 * ((c_at_electrode_s * (a_sites) *  BV_red *pybamm.exp((-self.G_)*c_p)) 
+                        - (c_p*self.c0*BV_ox* pybamm.exp((self.G-self.G_)*c_p))) 
+        
+        #time derivatives
+        dSdt = (pybamm.div(pybamm.grad(c_s)) * self.d_S) #Lithium
+        
+        dsPdt = BV #Adsorbed Lithium
+        dsXdt = -BV # Active Sites
+        
+        #space derivatives
+        dSdx = (BV)/self.d_S
         
         i_f = -dOdx
         
@@ -166,9 +179,9 @@ class CatalyticModel:
         # PDEs - left hand side is assumed to be time derivative of the PDE
         #dividing by their own coefficients
         model.rhs = {
-            c_s: (pybamm.div(pybamm.grad(c_s)) * self.d_S),
-            c_p: BV,
-            a_sites: -BV
+            c_s: dSdt,
+            c_p: dsPdt,
+            a_sites: dsXdt,
         }
         
         # algebraic equations (none)
@@ -180,7 +193,7 @@ class CatalyticModel:
         model.boundary_conditions = {
             c_s: {
                 "right": (self.cs_nd, "Dirichlet"),
-                "left": ((BV/self.d_S), "Neumann"),                    
+                "left": (dSdx, "Neumann"),                    
             },
         }
         

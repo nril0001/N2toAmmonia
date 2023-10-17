@@ -1,5 +1,5 @@
 ## Main function
-import catalyticmodel09 as cm
+import catalyticmodel07 as cm
 import time
 import re
 import matplotlib.pylab as plt
@@ -57,13 +57,14 @@ def main():
     #edit to control parameters
     area = 0.05
     radius = np.sqrt(area/np.pi)
-    srate = [0.02]
-    k01 = 1e3
-    k02 = 1e10
-    Ru = 130
+    srate = [0.02, 0.1, 0.2, 0.4, 1]
+    k0 = 1e5
+    kads = 1e1
+    kdes = 0
+    Ru = 0
     Cdl = 0
-    atol = 1e-7
-    rtol = 1e-7
+    atol = 1e-15
+    rtol = 1e-15
     t_steps = [2**(12)]
     x_steps = [750]
     solver = "Casadi"
@@ -71,38 +72,33 @@ def main():
     
     D_thickness = 1e-4
     DS_d = 2.27e-6
-    DP_d = 2.27e-6
     CS_d = 0.002
     Gamma = 1e-9
     F = 96485.3328959
     R = 8.314459848
     T = 298.2
-    G = 0
-    G_ = 0
     
     E_ds = []
     I_ds = []
     Z_ds = []
     
     for o in srate:   
-        print("k0 = " + str(k01) + ", " + str(o*1000) + " mV/s")
+        print("k0 = " + str(k0) + ", " + str(o*1000) + " mV/s")
         #constants that can vary, but generally won't change expt to expt
         const_parameters = {
             "Faraday Constant [C mol-1]": F,
             "Gas constant [J K-1 mol-1]": R,
             "Temperature [K]": T,
-            "Standard Unity Concentration [mol cm-3]": 0.001,
             "Far-field concentration of S(soln) [mol cm-3]": CS_d,
             "Far-field concentration of P(soln) [mol cm-3]": 0,
+            "Surface coverage of S [mol cm-2]": 0,
             "Surface coverage of P [mol cm-2]": 0,
-            "Surface coverage of P1 [mol cm-2]": 0,
             "Electrode Coverage [mol cm-2]": Gamma,
             "Diffusion Coefficient of S [cm2 s-1]": DS_d,
-            "Diffusion Coefficient of P [cm2 s-1]": DP_d,
             "Diffusion Layer Thickness [cm]": D_thickness,
             "Electrode Area [cm2]": 0.05,
             "Electrode Radius [cm]": radius,
-            "Voltage start [V]": 2.0,
+            "Voltage start [V]": 0.5,
             "Voltage reverse [V]": -0.55,
             "Voltage amplitude [V]": 0.0,
             "Scan Rate [V s-1]": o,
@@ -112,10 +108,10 @@ def main():
         
         #conditions that will change often over the course of testing
         input_parameters = {
-            "Reversible Potential 1 [V]": 0.0,
-            "Reversible Potential 2 [V]": 0.05,
-            "Electrosorption Rate 1 [mol-1 cm3 s-1]": k01,
-            "Electrosorption Rate 2 [mol-1 cm3 s-1]": k02,
+            "Reversible Potential 1 [V]": 0,
+            "Redox Rate (ads) [s-1]": k0,
+            "Adsorption Rate [mol-1 cm3 s-1]": kads,
+            "Desorption Rate [s-1]": kdes,
             "Symmetry factor [non-dim]": 0.5,
             
         }
@@ -123,13 +119,14 @@ def main():
         #setting main model to reference CatalyticModel class
         cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, t_steps[0], x_steps[0], solver)
         #setting solved answers to ones usable here
-        current, E_nd, O_nd, R_nd, times, T_nd = cmodel.simulate(input_parameters)
+        current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
         xss = x_steps[0]
         tss = t_steps[0]
         while len(E_nd) == tss/2:
             xss = xss + 2
+            tss = tss + 2
             cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, tss, xss, solver)
-            current, E_nd, O_nd, R_nd, times, T_nd = cmodel.simulate(input_parameters)
+            current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
         ##redimensionalizing here for now. Messy to do in main, move later
         I_d = current / cmodel._I_0
         E_d = E_nd / cmodel._E_0
@@ -161,10 +158,10 @@ def main():
     plt.xlabel("Eapp (V)")
     # plt.ylabel("Current (A)")
     plt.ylabel("j / mA cm-2")
-    plt.title("k0 = " + str(k01) + " cm3 mol-1 s-1")
+    plt.title("k0 = " + str(k0) + " s-1")
     plt.legend(loc='upper left')
     plt.grid()
-    plt.savefig(output+"CV_cat06_multi_srate_casadi11.png", dpi=600)
+    plt.savefig(output+"CV_cat07_multi_srate_casadi1.png", dpi=600)
     # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
     
     

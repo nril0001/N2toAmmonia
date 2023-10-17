@@ -58,14 +58,17 @@ def main():
     area = 0.05
     radius = np.sqrt(area/np.pi)
     srate = [0.02, 0.1, 0.2, 0.4, 1]
-    k0 = 1e0
-    kads = 1e1
-    kdes = 0
+    # k0 = 1e0
+    # kads = 1e0
+    # kdes = 1e-7
+    k0 = 1e2
+    kads = [2e4, 8e4, 3.3e3, 1.3e2, 5.2e2, 2.1e1, 6.7e0]
+    kdes = 1e0
     Ru = 0
     Cdl = 0
-    atol = 1e-15
-    rtol = 1e-15
-    t_steps = [2**(12)]
+    atol = 1e-14
+    rtol = 1e-14
+    t_steps = [2**(13)]
     x_steps = [750]
     solver = "Casadi"
     # solver = "Scikits"
@@ -82,13 +85,14 @@ def main():
     I_ds = []
     Z_ds = []
     
-    for o in srate:   
+    for o in kads:   
         print("k0 = " + str(k0) + ", " + str(o*1000) + " mV/s")
         #constants that can vary, but generally won't change expt to expt
         const_parameters = {
             "Faraday Constant [C mol-1]": F,
             "Gas constant [J K-1 mol-1]": R,
             "Temperature [K]": T,
+            "Standard Unity Concentration [mol cm-3]": 0.001,
             "Far-field concentration of S(soln) [mol cm-3]": CS_d,
             "Far-field concentration of P(soln) [mol cm-3]": 0,
             "Surface coverage of S [mol cm-2]": 0,
@@ -99,9 +103,9 @@ def main():
             "Electrode Area [cm2]": 0.05,
             "Electrode Radius [cm]": radius,
             "Voltage start [V]": 0.5,
-            "Voltage reverse [V]": -0.55,
+            "Voltage reverse [V]": -0.5,
             "Voltage amplitude [V]": 0.0,
-            "Scan Rate [V s-1]": o,
+            "Scan Rate [V s-1]": srate[0],
             "Uncompensated Resistance [Ohm]": Ru,
             "Capacitance [F]": Cdl, #1e-8,
         }
@@ -110,9 +114,9 @@ def main():
         input_parameters = {
             "Reversible Potential 1 [V]": 0,
             "Redox Rate (ads) [s-1]": k0,
-            "Adsorption Rate [mol-1 cm3 s-1]": kads,
+            "Adsorption Rate [mol-1 cm3 s-1]": o,
             "Desorption Rate [s-1]": kdes,
-            "Symmetry factor [non-dim]": 0.5,
+            "Symmetry factor [non-dim]": 0.63,
             
         }
         
@@ -148,7 +152,7 @@ def main():
     # Plot current
     plt.cla()
     for u in range(len(E_ds)):    
-        plt.plot(E_ds[u], (I_ds[u] / area * 1000), label="v = " + str(srate[u]*1000) + " mV/s")
+        plt.plot(E_ds[u], (I_ds[u] / area * 1000 * 1000), label="v = " + str(kads[u]*1000) + " mV/s")
     # plt.plot(volt, np.array(-curr), linestyle = 'dashdot', label = 'Digielch - ks = 1e-3, Gmax = 1e-9')
     # plt.plot(E_d, O_nd, color = 'Red', label = 'Pybamm', linestyle='dashed')
     # plt.plot(E_d, R_nd, color = 'Blue', label = 'Pybamm', linestyle='dashed')
@@ -159,7 +163,7 @@ def main():
     # plt.ylabel("Current (A)")
     plt.ylabel("j / mA cm-2")
     plt.title("k0 = " + str(k0) + " s-1")
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper right')
     plt.grid()
     plt.savefig(output+"CV_cat07_multi_srate_casadi1.png", dpi=600)
     # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
