@@ -118,7 +118,7 @@ class CatalyticModel:
     def BV_ox(self, E, E0):
         return pybamm.exp((1 - self.alpha) * (E - E0))
         
-    def model(self, sweep="forward", Cs =None, Cpa = None, active=None ,Ee=None, Ea=None):
+    def model(self, sweep="forward", Cs =None, Cpa = None, Ee=None, Ea=None):
         
         # create PyBaMM model object
         param = pybamm.ParameterValues(self.const_parameters)
@@ -128,7 +128,7 @@ class CatalyticModel:
         #sc is surface concentration
         c_s = pybamm.Variable("S(soln) [non-dim]", domain="solution")
         c_p = pybamm.Variable("P(ads) [non-dim]")
-        a_sites = pybamm.Variable("Active sites [non-dim]")
+        # a_sites = pybamm.Variable("Active sites [non-dim]")
         Eeff = pybamm.Variable("Effective Voltage [non-dim]")
         
         if sweep == "forward":
@@ -136,13 +136,13 @@ class CatalyticModel:
             Ee = self.E_start
             Cs = self.cs_nd
             Cpa = self.cpa_nd
-            active = self.G_max
+            # active = self.G_max
         elif sweep == "backward":
             Eapp = self.E_reverse + self.V * pybamm.t
             Ee = Ee
             Cs = pybamm.Array(Cs, domain="solution")
             Cpa = Cpa
-            active = active
+            # active = active
 
         # defining boundary values for S
         c_at_electrode_s = pybamm.BoundaryValue(c_s, "left")
@@ -152,14 +152,15 @@ class CatalyticModel:
         BV_ox = self.BV_ox(Eeff, self.E0)
 
         # Faradaic current (Butler Volmer)
-        BV = self.k0 * ((c_at_electrode_s * (a_sites) *  BV_red *pybamm.exp((-self.G_)*c_p)) 
+        # BV = self.k0 * self.B_0 * ((c_at_electrode_s *  BV_red *pybamm.exp((-self.G_)*c_p)) 
+        #                 - (c_p*self.c0*BV_ox* pybamm.exp((self.G-self.G_)*c_p))) 
+        BV = self.k0 * ((c_at_electrode_s *  BV_red *pybamm.exp((-self.G_)*c_p)) 
                         - (c_p*self.c0*BV_ox* pybamm.exp((self.G-self.G_)*c_p))) 
-        
         #time derivatives
         dSdt = (pybamm.div(pybamm.grad(c_s)) * self.d_S) #Lithium
         
-        dsPdt = BV #Adsorbed Lithium
-        dsXdt = -BV # Active Sites
+        dsPdt = BV * self.B_0 #Adsorbed Lithium
+        # dsXdt = -BV * self.B_0 # Active Sites
         
         #space derivatives
         dSdx = (BV)/self.d_S
@@ -181,7 +182,7 @@ class CatalyticModel:
         model.rhs = {
             c_s: dSdt,
             c_p: dsPdt,
-            a_sites: dsXdt,
+            # a_sites: dsXdt,
         }
         
         # algebraic equations (none)
@@ -200,7 +201,7 @@ class CatalyticModel:
         model.initial_conditions = {
             c_s: Cs,
             c_p: Cpa,
-            a_sites: active,
+            # a_sites: active,
             Eeff: Ee,
         }
 
@@ -239,7 +240,7 @@ class CatalyticModel:
             "S(soln) at electrode [non-dim]": c_at_electrode_s,
             "S(soln) [non-dim]": c_s,
             "P(ads) [non-dim]": c_p,
-            'Active sites [non-dim]': a_sites,
+            # 'Active sites [non-dim]': a_sites,
             
         }
         
@@ -299,10 +300,10 @@ class CatalyticModel:
             E = solution["Applied Voltage [non-dim]"](times_nd)
             Ee = solution["Effective Voltage [non-dim]"](times_nd)
             current = solution["Current [non-dim]"](times_nd)
-            a_sites = solution["Active sites [non-dim]"](times_nd)
+            # a_sites = solution["Active sites [non-dim]"](times_nd)
             
      
-            self.model("backward", c_S[1:-1, -1], c_P[-1], a_sites[-1], Ee[-1], E[-1])
+            self.model("backward", c_S[1:-1, -1], c_P[-1], Ee[-1], E[-1])
             solution = self._solver.solve(self._model, times_nd, inputs=parameters)
             c_S = np.concatenate((c_S, solution["S(soln) [non-dim]"](times_nd)))
             c_P = np.concatenate((c_P, solution["P(ads) [non-dim]"](times_nd)))

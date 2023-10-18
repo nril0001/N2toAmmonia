@@ -58,7 +58,7 @@ def main():
     area = 0.05
     radius = np.sqrt(area/np.pi)
     srate = [0.02, 0.1, 0.2, 0.4, 1]
-    k0 = 1e10
+    k0 = 1e7
     Ru = 130
     Cdl = 0
     atol = 1e-9
@@ -68,11 +68,11 @@ def main():
     solver = "Casadi"
     # solver = "Scikits"
     
-    D_thickness = 1e-4
+    D_thickness = 3.882e-3
     DS_d = 2.27e-6
     DP_d = 2.27e-6
     CS_d = 0.002
-    Gamma = 1.5e-9
+    Gamma = 2.2e-9
     F = 96485.3328959
     R = 8.314459848
     T = 298.2
@@ -160,7 +160,7 @@ def main():
     # plt.ylabel("Current (A)")
     plt.ylabel("j / mA cm-2")
     plt.title("k0 = " + str(k0) + " cm3 mol-1 s-1")
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper right')
     plt.grid()
     plt.savefig(output+"CV_cat06_multi_srate_casadi11.png", dpi=600)
     # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))

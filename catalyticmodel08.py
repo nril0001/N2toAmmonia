@@ -170,19 +170,19 @@ class CatalyticModel:
         BV_ox1 = self.BV_ox(Eeff, self.E01)
 
         # Faradaic current (Butler Volmer)
-        BV1 = self.k0 * ((c_at_electrode_s * (1 - sc_p - sc_z) *  BV_red1 *pybamm.exp((-self.G_)*(sc_p))) 
+        BV1 = self.k0 * ((c_at_electrode_s *  BV_red1 *pybamm.exp((-self.G_)*(sc_p))) 
                         - ((sc_p) * self.c0 * BV_ox1*pybamm.exp((self.G-self.G_)*(sc_p)))) 
         
         #Catalytic Reaction - 6Li + N2 
         cat_for = (self.k1 * c_at_electrode_y * sc_p) 
-        cat_back = (self.k1b * sc_z * self.c0)
+        cat_back = (self.k1b * sc_z)
         
         #time derivatives
         dSdt = (pybamm.div(pybamm.grad(c_s)) * self.d_S) #Lithium
         dYdt = (pybamm.div(pybamm.grad(c_y)) * self.d_Y) #Nitrogen
         
-        dsPdt = BV1 - cat_for + cat_back #Adsorbed Lithium
-        dsZdt = cat_for - cat_back # Lithium Nitride
+        dsPdt = (BV1 - cat_for + cat_back)*self.B_0 #Adsorbed Lithium
+        dsZdt = (cat_for - cat_back)*self.B_0 # Lithium Nitride
         dsXdt = 1 # Active Sites
         
         #space derivatives

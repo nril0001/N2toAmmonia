@@ -62,21 +62,21 @@ def main():
     # kads = 1e0
     # kdes = 1e-7
     k0 = 1e2
-    kads = [2e4, 8e4, 3.3e3, 1.3e2, 5.2e2, 2.1e1, 6.7e0]
-    kdes = 1e0
-    Ru = 0
+    kads = 6.7e-1
+    kdes = 1e-9
+    Ru = 0.00001
     Cdl = 0
-    atol = 1e-14
-    rtol = 1e-14
+    atol = 1e-15
+    rtol = 1e-15
     t_steps = [2**(13)]
     x_steps = [750]
     solver = "Casadi"
     # solver = "Scikits"
     
-    D_thickness = 1e-4
+    D_thickness = 3.882e-3
     DS_d = 2.27e-6
     CS_d = 0.002
-    Gamma = 1e-9
+    Gamma = 2.2e0
     F = 96485.3328959
     R = 8.314459848
     T = 298.2
@@ -85,7 +85,7 @@ def main():
     I_ds = []
     Z_ds = []
     
-    for o in kads:   
+    for o in srate:   
         print("k0 = " + str(k0) + ", " + str(o*1000) + " mV/s")
         #constants that can vary, but generally won't change expt to expt
         const_parameters = {
@@ -102,10 +102,10 @@ def main():
             "Diffusion Layer Thickness [cm]": D_thickness,
             "Electrode Area [cm2]": 0.05,
             "Electrode Radius [cm]": radius,
-            "Voltage start [V]": 0.5,
-            "Voltage reverse [V]": -0.5,
+            "Voltage start [V]": 1.0,
+            "Voltage reverse [V]": -0.55,
             "Voltage amplitude [V]": 0.0,
-            "Scan Rate [V s-1]": srate[0],
+            "Scan Rate [V s-1]": o,
             "Uncompensated Resistance [Ohm]": Ru,
             "Capacitance [F]": Cdl, #1e-8,
         }
@@ -114,7 +114,7 @@ def main():
         input_parameters = {
             "Reversible Potential 1 [V]": 0,
             "Redox Rate (ads) [s-1]": k0,
-            "Adsorption Rate [mol-1 cm3 s-1]": o,
+            "Adsorption Rate [mol-1 cm3 s-1]": kads,
             "Desorption Rate [s-1]": kdes,
             "Symmetry factor [non-dim]": 0.63,
             
@@ -152,7 +152,7 @@ def main():
     # Plot current
     plt.cla()
     for u in range(len(E_ds)):    
-        plt.plot(E_ds[u], (I_ds[u] / area * 1000 * 1000), label="v = " + str(kads[u]*1000) + " mV/s")
+        plt.plot(E_ds[u], (I_ds[u] / area * 1000 * 1000), label="v = " + str(srate[u]*1000) + " mV/s")
     # plt.plot(volt, np.array(-curr), linestyle = 'dashdot', label = 'Digielch - ks = 1e-3, Gmax = 1e-9')
     # plt.plot(E_d, O_nd, color = 'Red', label = 'Pybamm', linestyle='dashed')
     # plt.plot(E_d, R_nd, color = 'Blue', label = 'Pybamm', linestyle='dashed')

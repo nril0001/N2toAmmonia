@@ -58,7 +58,7 @@ def main():
     area = 0.05
     radius = np.sqrt(area/np.pi)
     srate = [0.02, 0.1, 0.2, 0.4, 1]
-    k0 = 1e3
+    k0 = 1e7
     kf = 1e7
     kb = 1e2
     Ru = 130
@@ -70,7 +70,7 @@ def main():
     solver = "Casadi"
     # solver = "Scikits"
     
-    D_thickness = 1e-4
+    D_thickness = 3.882e-3
     DS_d = 2.27e-6
     DP_d = 2.27e-6
     DY_d = 1
