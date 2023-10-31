@@ -190,7 +190,7 @@ class CatalyticModel:
         dYdx = (cat_for - cat_back)/self.d_Y
         
         #current
-        i_f = -dOdx - cat_for + cat_back
+        i_f = -dOdx #+ cat_for - cat_back
         i_cap = self.Cdl * self.V
         if sweep == "forward":
             i = i_f - i_cap

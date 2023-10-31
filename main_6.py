@@ -26,15 +26,6 @@ def main():
         os.mkdir(output+"CV", 0o666)
     
     files = [['DigiElech/2023-10-02 adsorption/CV_R_130_v_2e-2_k0_1e-3_G_0.txt']]
-    # files = [['DigiElech/2023-10-02 adsorption/CV_R_130_v_2e-2_k0_1e-3_G_0_Gamma_1.txt']]
-
-    # retrieve variables from file pathway
-    # for t in files:
-    #     variables = re.findall(
-    #         "[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", t[0])
-    #     for l in range(len(variables)):
-    #         variables[l] = float(variables[l])
-    #         t.append(variables[l])
     
     for i in files:
         print(i)
@@ -58,11 +49,11 @@ def main():
     area = 0.05
     radius = np.sqrt(area/np.pi)
     srate = [0.02, 0.1, 0.2, 0.4, 1]
-    k0 = 1e7
+    k0 = 1e-6
     Ru = 130
     Cdl = 0
-    atol = 1e-9
-    rtol = 1e-9
+    atol = 1e-7
+    rtol = 1e-7
     t_steps = [2**(12)]
     x_steps = [750]
     solver = "Casadi"
@@ -114,7 +105,7 @@ def main():
             "G'": G_,
             "Reversible Potential 1 [V]": 0,
             "Electrosorption Rate [mol-1 cm3 s-1]": k0,
-            "Symmetry factor [non-dim]": 0.5,
+            "Symmetry factor [non-dim]": 0.63,
             
         }
         
@@ -134,7 +125,7 @@ def main():
         E_ds.append(E_d)
         I_ds.append(I_d)
         # Z_ds.append(Z_nd)
-        np.savetxt(output+"test.txt", np.column_stack((E_d, I_d)))
+        # np.savetxt(output+"test.txt", np.column_stack((E_d, I_d)))
         
         print("complete in time: " + str((time.time()-ti)/60) + " minutes") 
     
@@ -162,8 +153,15 @@ def main():
     plt.title("k0 = " + str(k0) + " cm3 mol-1 s-1")
     plt.legend(loc='upper right')
     plt.grid()
-    plt.savefig(output+"CV_cat06_multi_srate_casadi11.png", dpi=600)
-    # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
+    path = "CV_cat06_casadi1_k0_"
+    ext = ".png"
+    ext1 = ".dat"
+    count = 1
+    while os.path.exists(output+path+str(k0)+"_Ru_"+str(Ru)+ext):
+        path = path+"_"+str(count)
+        count += 1
+    plt.savefig(output+path+str(k0)+"_Ru_"+str(Ru)+ext, dpi=600)
+    np.savetxt(output+path+str(k0)+"_Ru_"+str(Ru)+ext1, np.transpose(np.vstack((E_ds[-1], I_ds))))
     
     
     # #Plot concentration profiles

@@ -58,10 +58,10 @@ def main():
     area = 0.05
     radius = np.sqrt(area/np.pi)
     srate = [0.02, 0.1, 0.2, 0.4, 1]
-    k0 = 1e7
-    kf = 1e7
-    kb = 1e2
-    Ru = 130
+    k0 = 1e1
+    kf = 1e5
+    kb = 1e-3
+    Ru = 0
     Cdl = 0
     atol = 1e-7
     rtol = 1e-7
@@ -127,7 +127,7 @@ def main():
             "Electrosorption Rate [mol-1 cm3 s-1]": k0,
             "Catalytic Rate For [mol-1 cm3 s-1]": kf*1000,
             "Catalytic Rate Back [s-1]": kb*1000,
-            "Symmetry factor [non-dim]": 0.5,
+            "Symmetry factor [non-dim]": 0.63,
             
         }
         
@@ -148,7 +148,7 @@ def main():
         E_ds.append(E_d)
         I_ds.append(I_d)
         # Z_ds.append(Z_nd)
-        np.savetxt(output+"test.txt", np.column_stack((E_d, I_d)))
+        # np.savetxt(output+"test.txt", np.column_stack((E_d, I_d)))
         
         print("complete in time: " + str((time.time()-ti)/60) + " minutes") 
     
@@ -173,11 +173,18 @@ def main():
     plt.xlabel("Eapp (V)")
     # plt.ylabel("Current (A)")
     plt.ylabel("j / mA cm-2")
-    plt.title("k0 = " + str(k0) + " cm3 mol-1 s-1")
+    plt.title("k0 = " + str(k0) + " cm3 mol-1 s-1,"+" kf = " + str(kf) + " cm3 mol-1 s-1" +"kb = "+ str(kb) + " s-1")
     plt.legend(loc='lower right')
     plt.grid()
-    plt.savefig(output+"CV_cat08_multi_srate_casadi1.png", dpi=600)
-    # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
+    path = "CV_cat08_casadi1_k0_"+str(k0)+"_kf_"+str(kf)+"_kb_"+str(kb)+"_Ru_"+str(Ru)
+    ext = ".png"
+    ext1 = ".dat"
+    count = 1
+    while os.path.exists(output+path+str(k0)+ext):
+        path = path+"_"+str(count)
+        count += 1
+    plt.savefig(output+path+ext, dpi=600)
+    np.savetxt(output+path+ext1, np.transpose(np.vstack((E_d, I_ds[0], I_ds[1], I_ds[2], I_ds[3], I_ds[4]))))
     
     
     # #Plot concentration profiles

@@ -58,17 +58,14 @@ def main():
     area = 0.05
     radius = np.sqrt(area/np.pi)
     srate = [0.02, 0.1, 0.2, 0.4, 1]
-    # k0 = 1e0
-    # kads = 1e0
-    # kdes = 1e-7
-    k0 = 1e2
-    kads = 6.7e-1
-    kdes = 1e-9
-    Ru = 0.00001
+    k0 = 1e-3
+    kads = 1e2
+    kdes = 0
+    Ru = 0
     Cdl = 0
-    atol = 1e-15
-    rtol = 1e-15
-    t_steps = [2**(13)]
+    atol = 1e-12
+    rtol = 1e-12
+    t_steps = [2**(12)]
     x_steps = [750]
     solver = "Casadi"
     # solver = "Scikits"
@@ -76,7 +73,7 @@ def main():
     D_thickness = 3.882e-3
     DS_d = 2.27e-6
     CS_d = 0.002
-    Gamma = 2.2e0
+    Gamma = 2.2e-6
     F = 96485.3328959
     R = 8.314459848
     T = 298.2
@@ -102,8 +99,8 @@ def main():
             "Diffusion Layer Thickness [cm]": D_thickness,
             "Electrode Area [cm2]": 0.05,
             "Electrode Radius [cm]": radius,
-            "Voltage start [V]": 1.0,
-            "Voltage reverse [V]": -0.55,
+            "Voltage start [V]": 0.6,
+            "Voltage reverse [V]": -0.025,
             "Voltage amplitude [V]": 0.0,
             "Scan Rate [V s-1]": o,
             "Uncompensated Resistance [Ohm]": Ru,
@@ -128,7 +125,7 @@ def main():
         tss = t_steps[0]
         while len(E_nd) == tss/2:
             xss = xss + 2
-            tss = tss + 2
+            # tss = tss + 2
             cmodel = cm.CatalyticModel(const_parameters,seioptions, atol, rtol, tss, xss, solver)
             current, E_nd, O_nd, R_nd, T_nd = cmodel.simulate(input_parameters)
         ##redimensionalizing here for now. Messy to do in main, move later
@@ -137,7 +134,7 @@ def main():
         E_ds.append(E_d)
         I_ds.append(I_d)
         # Z_ds.append(Z_nd)
-        np.savetxt(output+"test.txt", np.column_stack((E_d, I_d)))
+        # np.savetxt(output+"test.txt", np.column_stack((E_d, I_d)))
         
         print("complete in time: " + str((time.time()-ti)/60) + " minutes") 
     
@@ -162,11 +159,18 @@ def main():
     plt.xlabel("Eapp (V)")
     # plt.ylabel("Current (A)")
     plt.ylabel("j / mA cm-2")
-    plt.title("k0 = " + str(k0) + " s-1")
-    plt.legend(loc='upper right')
+    plt.title("k0 = " + str(k0) + " s-1,"+" kads = " + str(kads) + " cm3 mol-1 s-1")
+    plt.legend(loc='lower right')
     plt.grid()
-    plt.savefig(output+"CV_cat07_multi_srate_casadi1.png", dpi=600)
-    # np.savetxt(output+"current_dim_pybamm_kf_1.dat", np.transpose(np.vstack((E_d, O_nd, R_nd))))
+    path = "CV_cat07_casadi1_k0_"+str(k0)+"_kads_"+str(kads)+"_Ru_"+str(Ru)
+    ext = ".png"
+    ext1 = ".dat"
+    count = 1
+    while os.path.exists(output+path+str(k0)+ext):
+        path = path+"_"+str(count)
+        count += 1
+    plt.savefig(output+path+ext, dpi=600)
+    np.savetxt(output+path+ext1, np.transpose(np.vstack((E_d, I_ds[0], I_ds[1], I_ds[2], I_ds[3], I_ds[4]))))
     
     
     # #Plot concentration profiles
